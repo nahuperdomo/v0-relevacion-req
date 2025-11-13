@@ -1,6 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { agentsApi, type Agent, type CreateAgentData } from "@/lib/services/agents"
+import { sectionsApi, type Section } from "@/lib/services/sections"
+import { useToast } from "@/hooks/use-toast"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,75 +14,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Search, Edit, Trash2, Bot, MessageSquare, Zap } from "lucide-react"
-
-interface Agent {
-  id: string
-  name: string
-  tone: string
-  model: string
-  embedding_profile: string
-  assigned_section: string
-  section_name: string
-  active_interviews: string[]
-  total_conversations: number
-  status: "ACTIVE" | "INACTIVE" | "TRAINING"
-  created_at: string
-}
-
-const mockAgents: Agent[] = [
-  {
-    id: "agt-it-001",
-    name: "Agente IT",
-    tone: "casual y amigable",
-    model: "gpt-5-chat",
-    embedding_profile: "it_operaciones",
-    assigned_section: "sec-IT",
-    section_name: "Tecnología",
-    active_interviews: ["int-it-002"],
-    total_conversations: 156,
-    status: "ACTIVE",
-    created_at: "2025-11-12T09:40:00Z",
-  },
-  {
-    id: "agt-rrhh-001",
-    name: "Agente RRHH",
-    tone: "empático y cercano",
-    model: "gpt-5-chat",
-    embedding_profile: "rrhh_clima",
-    assigned_section: "sec-RRHH",
-    section_name: "Recursos Humanos",
-    active_interviews: [],
-    total_conversations: 89,
-    status: "ACTIVE",
-    created_at: "2025-11-12T09:45:00Z",
-  },
-  {
-    id: "agt-cont-001",
-    name: "Agente Contable",
-    tone: "profesional y preciso",
-    model: "gpt-5-chat",
-    embedding_profile: "contabilidad_procesos",
-    assigned_section: "sec-CONT",
-    section_name: "Contabilidad",
-    active_interviews: ["int-cont-003"],
-    total_conversations: 45,
-    status: "ACTIVE",
-    created_at: "2025-11-12T09:50:00Z",
-  },
-  {
-    id: "agt-sales-001",
-    name: "Agente Ventas",
-    tone: "dinámico y motivador",
-    model: "gpt-5-chat",
-    embedding_profile: "ventas_performance",
-    assigned_section: "sec-SALES",
-    section_name: "Ventas",
-    active_interviews: [],
-    total_conversations: 203,
-    status: "TRAINING",
-    created_at: "2025-11-12T09:55:00Z",
-  },
-]
 
 const statusColors = {
   ACTIVE: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
@@ -100,16 +34,104 @@ const modelOptions = [
 ]
 
 export default function AgentesPage() {
-  const [agents, setAgents] = useState<Agent[]>(mockAgents)
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [sections, setSections] = useState<Section[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    try {
+      setLoading(true)
+      const [agentsData, sectionsData] = await Promise.all([agentsApi.getAll({ limit: 100 }), sectionsApi.getAll()])
+
+      setAgents(agentsData.agents)
+      setSections(sectionsData)
+    } catch (error) {
+      console.error("[v0] Error cargando datos:", error)
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los agentes",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCreateAgent = async (data: CreateAgentData) => {
+    try {
+      const newAgent = await agentsApi.create(data)
+      setAgents([...agents, newAgent])
+      setIsCreateDialogOpen(false)
+      toast({
+        title: "Éxito",
+        description: "Agente creado correctamente",
+      })
+    } catch (error) {
+      console.error("[v0] Error creando agente:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo crear el agente",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleTestAgent = async (id: string) => {
+    try {
+      const result = await agentsApi.test(id, {
+        test_message: "¿Cuáles son los principales desafíos en tu área?",
+        context: "Prueba desde el panel de administración",
+      })
+
+      toast({
+        title: "Prueba exitosa",
+        description: `Respuesta: ${result.agent_response.substring(0, 100)}...`,
+      })
+    } catch (error) {
+      console.error("[v0] Error probando agente:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo probar el agente",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDeleteAgent = async (id: string) => {
+    try {
+      await agentsApi.delete(id)
+      setAgents(agents.filter((a) => a.agent_id !== id))
+      toast({
+        title: "Agente eliminado",
+        description: "El agente ha sido desactivado",
+      })
+    } catch (error) {
+      console.error("[v0] Error eliminando agente:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el agente",
+        variant: "destructive",
+      })
+    }
+  }
 
   const filteredAgents = agents.filter(
     (agent) =>
       agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      agent.section_name.toLowerCase().includes(searchQuery.toLowerCase()),
+      agent.section_id.toLowerCase().includes(searchQuery.toLowerCase()),
   )
+
+  const getSectionName = (sectionId: string) => {
+    return sections.find((s) => s.section_id === sectionId)?.name || sectionId
+  }
 
   return (
     <>
@@ -286,16 +308,33 @@ export default function AgentesPage() {
                   variant="outline"
                   size="sm"
                   className="flex-1 bg-transparent"
-                  onClick={() => setSelectedAgent(mockAgents[3])}
+                  onClick={() =>
+                    setSelectedAgent({
+                      agent_id: "agt-sales-001",
+                      name: "Agente Ventas",
+                      tone: "dinámico y motivador",
+                      model_config: { model: "gpt-5-chat" },
+                      embedding_profile: "ventas_performance",
+                      section_id: "sec-SALES",
+                      status: "TRAINING",
+                      total_conversations: 203,
+                      assigned_interviews_count: 0,
+                    })
+                  }
                 >
                   <Edit className="h-3.5 w-3.5 mr-1.5" />
                   Configurar
                 </Button>
-                <Button variant="outline" size="sm" className="flex-1 bg-transparent">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 bg-transparent"
+                  onClick={() => handleTestAgent("agt-sales-001")}
+                >
                   <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
                   Probar
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => handleDeleteAgent("agt-sales-001")}>
                   <Trash2 className="h-3.5 w-3.5 text-red-400" />
                 </Button>
               </div>
@@ -304,79 +343,88 @@ export default function AgentesPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          {filteredAgents.map((agent) => (
-            <Card key={agent.id} className="border-border/50">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-violet-500/10 p-2">
-                      <Bot className="h-6 w-6 text-violet-400" />
+          {loading ? (
+            <div className="col-span-full text-center py-8 text-muted-foreground">Cargando agentes...</div>
+          ) : (
+            filteredAgents.map((agent) => (
+              <Card key={agent.agent_id} className="border-border/50">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-lg bg-violet-500/10 p-2">
+                        <Bot className="h-6 w-6 text-violet-400" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-xl">{agent.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground">{getSectionName(agent.section_id)}</p>
+                      </div>
                     </div>
-                    <div>
-                      <CardTitle className="text-xl">{agent.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground">{agent.section_name}</p>
+                    <Badge variant="outline" className={statusColors[agent.status]}>
+                      {statusLabels[agent.status]}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm">
+                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Tono:</span>
+                      <span className="font-medium">{agent.tone}</span>
                     </div>
-                  </div>
-                  <Badge variant="outline" className={statusColors[agent.status]}>
-                    {statusLabels[agent.status]}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm">
-                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Tono:</span>
-                    <span className="font-medium">{agent.tone}</span>
-                  </div>
 
-                  <div className="flex items-center gap-2 text-sm">
-                    <Zap className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Modelo:</span>
-                    <span className="font-medium font-mono text-xs">{agent.model}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-sm">
-                    <Bot className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Embeddings:</span>
-                    <span className="font-medium font-mono text-xs">{agent.embedding_profile}</span>
-                  </div>
-                </div>
-
-                <div className="rounded-lg bg-muted/30 p-3">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <div className="text-muted-foreground">Conversaciones</div>
-                      <div className="text-xl font-bold text-violet-400">{agent.total_conversations}</div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Zap className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Modelo:</span>
+                      <span className="font-medium font-mono text-xs">{agent.model_config.model}</span>
                     </div>
-                    <div>
-                      <div className="text-muted-foreground">Entrevistas Activas</div>
-                      <div className="text-xl font-bold text-emerald-400">{agent.active_interviews.length}</div>
+
+                    <div className="flex items-center gap-2 text-sm">
+                      <Bot className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Embeddings:</span>
+                      <span className="font-medium font-mono text-xs">{agent.embedding_profile}</span>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 bg-transparent"
-                    onClick={() => setSelectedAgent(agent)}
-                  >
-                    <Edit className="h-3.5 w-3.5 mr-1.5" />
-                    Configurar
-                  </Button>
-                  <Button variant="outline" size="sm" className="flex-1 bg-transparent">
-                    <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-                    Probar
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Trash2 className="h-3.5 w-3.5 text-red-400" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <div className="rounded-lg bg-muted/30 p-3">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <div className="text-muted-foreground">Conversaciones</div>
+                        <div className="text-xl font-bold text-violet-400">{agent.total_conversations}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Entrevistas Activas</div>
+                        <div className="text-xl font-bold text-emerald-400">{agent.assigned_interviews_count}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 bg-transparent"
+                      onClick={() => setSelectedAgent(agent)}
+                    >
+                      <Edit className="h-3.5 w-3.5 mr-1.5" />
+                      Configurar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 bg-transparent"
+                      onClick={() => handleTestAgent(agent.agent_id)}
+                    >
+                      <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                      Probar
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleDeleteAgent(agent.agent_id)}>
+                      <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
 
         {selectedAgent && (
@@ -394,7 +442,7 @@ export default function AgentesPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Sección Asignada</Label>
-                    <Select defaultValue={selectedAgent.assigned_section}>
+                    <Select defaultValue={selectedAgent.section_id}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -409,7 +457,7 @@ export default function AgentesPage() {
 
                   <div className="space-y-2">
                     <Label>Modelo IA</Label>
-                    <Select defaultValue={selectedAgent.model}>
+                    <Select defaultValue={selectedAgent.model_config.model}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>

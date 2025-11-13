@@ -1,8 +1,10 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { resultsApi, type Result } from "@/lib/services/results"
+import { sectionsApi } from "@/lib/services/sections"
+import { useToast } from "@/hooks/use-toast"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,66 +16,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Eye, Download, TrendingUp, AlertCircle, CheckCircle2, Clock, BarChart3, FileText } from "lucide-react"
 
 type Sentiment = "positive" | "neutral" | "negative"
-
-interface Result {
-  id: string
-  employee_name: string
-  interview_title: string
-  section: string
-  summary: string
-  topics_detected: string[]
-  sentiment: Sentiment
-  urgency_score: number
-  created_at: string
-}
-
-const mockResults: Result[] = [
-  {
-    id: "res-it-001",
-    employee_name: "Juan Pérez",
-    interview_title: "Detección de Cuellos de Botella en IT",
-    section: "Tecnología",
-    summary:
-      "Se detectó lentitud en los deploys, falta de CI/CD automatizado. El empleado menciona que los procesos manuales generan demoras de hasta 3 horas.",
-    topics_detected: ["devops", "tiempos de entrega", "automatización"],
-    sentiment: "negative",
-    urgency_score: 4,
-    created_at: "2025-11-12T10:00:00Z",
-  },
-  {
-    id: "res-it-002",
-    employee_name: "María García",
-    interview_title: "Detección de Cuellos de Botella en IT",
-    section: "Tecnología",
-    summary: "Proceso de code review funciona bien. Sugiere implementar pair programming para casos complejos.",
-    topics_detected: ["code review", "colaboración", "calidad"],
-    sentiment: "positive",
-    urgency_score: 2,
-    created_at: "2025-11-12T10:15:00Z",
-  },
-  {
-    id: "res-rrhh-001",
-    employee_name: "Carlos López",
-    interview_title: "Evaluación de Clima Laboral",
-    section: "Recursos Humanos",
-    summary: "Buena comunicación con el equipo, pero falta claridad en los objetivos trimestrales.",
-    topics_detected: ["objetivos", "comunicación", "planificación"],
-    sentiment: "neutral",
-    urgency_score: 3,
-    created_at: "2025-11-12T10:30:00Z",
-  },
-  {
-    id: "res-cont-001",
-    employee_name: "Ana Martínez",
-    interview_title: "Mejoras en Procesos Contables",
-    section: "Contabilidad",
-    summary: "Los cierres mensuales toman demasiado tiempo. Sugiere automatizar conciliaciones bancarias.",
-    topics_detected: ["cierres contables", "automatización", "conciliaciones"],
-    sentiment: "negative",
-    urgency_score: 5,
-    created_at: "2025-11-12T10:45:00Z",
-  },
-]
 
 const sentimentColors: Record<Sentiment, string> = {
   positive: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
@@ -94,19 +36,61 @@ const sentimentIcons: Record<Sentiment, React.ReactNode> = {
 }
 
 export default function ReportesPage() {
-  const [results, setResults] = useState<Result[]>(mockResults)
+  const [results, setResults] = useState<Result[]>([])
+  const [sections, setSections] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterSection, setFilterSection] = useState<string>("all")
   const [filterSentiment, setFilterSentiment] = useState<string>("all")
   const [selectedResult, setSelectedResult] = useState<Result | null>(null)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    try {
+      setLoading(true)
+      const [resultsData, sectionsData] = await Promise.all([resultsApi.getAll({ limit: 100 }), sectionsApi.getAll()])
+
+      setResults(resultsData.data)
+      setSections(sectionsData)
+    } catch (error) {
+      console.error("[v0] Error cargando datos:", error)
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los resultados",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleExport = async (format: "pdf" | "excel" | "json" = "pdf") => {
+    try {
+      toast({
+        title: "Exportando",
+        description: "Generando el reporte...",
+      })
+      // Aquí se implementaría la lógica de exportación real
+    } catch (error) {
+      console.error("[v0] Error exportando:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo exportar el reporte",
+        variant: "destructive",
+      })
+    }
+  }
 
   const filteredResults = results.filter((result) => {
     const matchesSearch =
-      result.employee_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      result.interview_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      result.summary.toLowerCase().includes(searchQuery.toLowerCase())
+      result.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      result.topicsDetected.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()))
 
-    const matchesSection = filterSection === "all" || result.section === filterSection
+    const matchesSection = filterSection === "all" || result.sectionId === filterSection
 
     const matchesSentiment = filterSentiment === "all" || result.sentiment === filterSentiment
 
@@ -114,15 +98,33 @@ export default function ReportesPage() {
   })
 
   const urgencyDistribution = {
-    high: results.filter((r) => r.urgency_score >= 4).length,
-    medium: results.filter((r) => r.urgency_score === 3).length,
-    low: results.filter((r) => r.urgency_score <= 2).length,
+    high: results.filter((r) => r.urgencyLevel >= 4).length,
+    medium: results.filter((r) => r.urgencyLevel === 3).length,
+    low: results.filter((r) => r.urgencyLevel <= 2).length,
   }
 
   const sentimentDistribution = {
     positive: results.filter((r) => r.sentiment === "positive").length,
     neutral: results.filter((r) => r.sentiment === "neutral").length,
     negative: results.filter((r) => r.sentiment === "negative").length,
+  }
+
+  const getTopTopics = () => {
+    const topicCounts: Record<string, number> = {}
+    results.forEach((r) => {
+      r.topicsDetected.forEach((topic) => {
+        topicCounts[topic] = (topicCounts[topic] || 0) + 1
+      })
+    })
+
+    return Object.entries(topicCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([topic, count]) => ({ topic, count }))
+  }
+
+  const getSectionName = (sectionId: string) => {
+    return sections.find((s) => s.section_id === sectionId)?.name || sectionId
   }
 
   return (
@@ -169,7 +171,7 @@ export default function ReportesPage() {
             </SelectContent>
           </Select>
 
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => handleExport("pdf")}>
             <Download className="h-4 w-4" />
             Exportar
           </Button>
@@ -210,7 +212,8 @@ export default function ReportesPage() {
             <CardContent>
               <div className="text-3xl font-bold text-emerald-400">{sentimentDistribution.positive}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {Math.round((sentimentDistribution.positive / results.length) * 100)}% del total
+                {results.length > 0 ? Math.round((sentimentDistribution.positive / results.length) * 100) : 0}% del
+                total
               </p>
             </CardContent>
           </Card>
@@ -291,12 +294,7 @@ export default function ReportesPage() {
               <CardTitle className="text-base">Temas Más Detectados</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {[
-                { topic: "automatización", count: 3 },
-                { topic: "comunicación", count: 2 },
-                { topic: "tiempos de entrega", count: 2 },
-                { topic: "objetivos", count: 1 },
-              ].map((item) => (
+              {getTopTopics().map((item) => (
                 <div key={item.topic} className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">{item.topic}</span>
                   <Badge variant="outline" className="font-mono">
@@ -313,77 +311,86 @@ export default function ReportesPage() {
             <CardTitle>Resultados Individuales</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border/50 hover:bg-muted/5">
-                  <TableHead>Empleado</TableHead>
-                  <TableHead>Entrevista</TableHead>
-                  <TableHead>Sección</TableHead>
-                  <TableHead>Sentimiento</TableHead>
-                  <TableHead>Urgencia</TableHead>
-                  <TableHead>Temas</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredResults.map((result) => (
-                  <TableRow key={result.id} className="border-border/50 hover:bg-muted/5">
-                    <TableCell className="font-medium">{result.employee_name}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">{result.interview_title}</TableCell>
-                    <TableCell>{result.section}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={`gap-1.5 ${sentimentColors[result.sentiment]}`}>
-                        {sentimentIcons[result.sentiment]}
-                        {sentimentLabels[result.sentiment]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-0.5">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <div
-                              key={i}
-                              className={`h-2 w-2 rounded-full ${
-                                i < result.urgency_score
-                                  ? result.urgency_score >= 4
-                                    ? "bg-red-400"
-                                    : result.urgency_score === 3
-                                      ? "bg-amber-400"
-                                      : "bg-emerald-400"
-                                  : "bg-muted"
-                              }`}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-xs text-muted-foreground">{result.urgency_score}/5</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {result.topics_detected.slice(0, 2).map((topic) => (
-                          <Badge key={topic} variant="outline" className="text-xs">
-                            {topic}
-                          </Badge>
-                        ))}
-                        {result.topics_detected.length > 2 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{result.topics_detected.length - 2}
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end">
-                        <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => setSelectedResult(result)}>
-                          <Eye className="h-3.5 w-3.5" />
-                          Ver Detalle
-                        </Button>
-                      </div>
-                    </TableCell>
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">Cargando resultados...</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border/50 hover:bg-muted/5">
+                    <TableHead>Empleado</TableHead>
+                    <TableHead>Entrevista</TableHead>
+                    <TableHead>Sección</TableHead>
+                    <TableHead>Sentimiento</TableHead>
+                    <TableHead>Urgencia</TableHead>
+                    <TableHead>Temas</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredResults.map((result) => (
+                    <TableRow key={result.id} className="border-border/50 hover:bg-muted/5">
+                      <TableCell className="font-medium">{result.employeeId}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">{result.interviewId}</TableCell>
+                      <TableCell>{getSectionName(result.sectionId)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={`gap-1.5 ${sentimentColors[result.sentiment]}`}>
+                          {sentimentIcons[result.sentiment]}
+                          {sentimentLabels[result.sentiment]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="flex gap-0.5">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <div
+                                key={i}
+                                className={`h-2 w-2 rounded-full ${
+                                  i < result.urgencyLevel
+                                    ? result.urgencyLevel >= 4
+                                      ? "bg-red-400"
+                                      : result.urgencyLevel === 3
+                                        ? "bg-amber-400"
+                                        : "bg-emerald-400"
+                                    : "bg-muted"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs text-muted-foreground">{result.urgencyLevel}/5</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {result.topicsDetected.slice(0, 2).map((topic) => (
+                            <Badge key={topic} variant="outline" className="text-xs">
+                              {topic}
+                            </Badge>
+                          ))}
+                          {result.topicsDetected.length > 2 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{result.topicsDetected.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={() => setSelectedResult(result)}
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            Ver Detalle
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
 
@@ -397,17 +404,17 @@ export default function ReportesPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <div className="text-sm text-muted-foreground mb-1">Empleado</div>
-                    <div className="font-medium">{selectedResult.employee_name}</div>
+                    <div className="font-medium">{selectedResult.employeeId}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground mb-1">Sección</div>
-                    <div className="font-medium">{selectedResult.section}</div>
+                    <div className="font-medium">{getSectionName(selectedResult.sectionId)}</div>
                   </div>
                 </div>
 
                 <div>
                   <div className="text-sm text-muted-foreground mb-1">Entrevista</div>
-                  <div className="font-medium">{selectedResult.interview_title}</div>
+                  <div className="font-medium">{selectedResult.interviewId}</div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -426,10 +433,10 @@ export default function ReportesPage() {
                           <div
                             key={i}
                             className={`h-3 w-3 rounded-full ${
-                              i < selectedResult.urgency_score
-                                ? selectedResult.urgency_score >= 4
+                              i < selectedResult.urgencyLevel
+                                ? selectedResult.urgencyLevel >= 4
                                   ? "bg-red-400"
-                                  : selectedResult.urgency_score === 3
+                                  : selectedResult.urgencyLevel === 3
                                     ? "bg-amber-400"
                                     : "bg-emerald-400"
                                 : "bg-muted"
@@ -437,7 +444,7 @@ export default function ReportesPage() {
                           />
                         ))}
                       </div>
-                      <span className="text-sm font-medium">{selectedResult.urgency_score}/5</span>
+                      <span className="text-sm font-medium">{selectedResult.urgencyLevel}/5</span>
                     </div>
                   </div>
                 </div>
@@ -445,7 +452,7 @@ export default function ReportesPage() {
                 <div>
                   <div className="text-sm text-muted-foreground mb-2">Temas Detectados</div>
                   <div className="flex flex-wrap gap-2">
-                    {selectedResult.topics_detected.map((topic) => (
+                    {selectedResult.topicsDetected.map((topic) => (
                       <Badge key={topic} variant="outline" className="bg-violet-500/5">
                         {topic}
                       </Badge>
@@ -457,6 +464,32 @@ export default function ReportesPage() {
                   <div className="text-sm text-muted-foreground mb-2">Resumen</div>
                   <div className="rounded-lg bg-muted/30 p-4 text-sm leading-relaxed">{selectedResult.summary}</div>
                 </div>
+
+                {selectedResult.criticalIssues.length > 0 && (
+                  <div>
+                    <div className="text-sm text-muted-foreground mb-2">Problemas Críticos</div>
+                    <ul className="space-y-1">
+                      {selectedResult.criticalIssues.map((issue, i) => (
+                        <li key={i} className="text-sm text-red-400">
+                          • {issue}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {selectedResult.improvementOpportunities.length > 0 && (
+                  <div>
+                    <div className="text-sm text-muted-foreground mb-2">Oportunidades de Mejora</div>
+                    <ul className="space-y-1">
+                      {selectedResult.improvementOpportunities.map((opp, i) => (
+                        <li key={i} className="text-sm text-emerald-400">
+                          • {opp}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </DialogContent>
           </Dialog>

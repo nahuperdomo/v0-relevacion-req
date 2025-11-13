@@ -4,9 +4,73 @@ import { StatsCard } from "@/components/stats-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Users, MessageSquare, Bot, TrendingUp, Activity, Clock, CheckCircle2, AlertCircle } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import {
+  Users,
+  MessageSquare,
+  Bot,
+  TrendingUp,
+  Activity,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  WifiOff,
+} from "lucide-react"
+import { useEffect, useState } from "react"
+import { interviewsApi, type InterviewStats } from "@/lib/services/interviews"
+import { employeesApi } from "@/lib/services/employees"
+import { agentsApi, type AgentStats } from "@/lib/services/agents"
 
 export default function DashboardPage() {
+  const [stats, setStats] = useState<{
+    interviews?: InterviewStats
+    agents?: AgentStats
+    employeesCount?: number
+  }>({})
+  const [loading, setLoading] = useState(true)
+  const [connectionError, setConnectionError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        setConnectionError(null)
+        const [interviewStats, agentStats, employeesData] = await Promise.all([
+          interviewsApi.getStats(),
+          agentsApi.getStats(),
+          employeesApi.getAll({ limit: 1 }),
+        ])
+
+        setStats({
+          interviews: interviewStats,
+          agents: agentStats,
+          employeesCount: employeesData.total,
+        })
+      } catch (error: any) {
+        console.error("[v0] Error cargando datos del dashboard:", error)
+        setConnectionError(error.message || "Error al cargar los datos")
+
+        setStats({
+          interviews: {
+            total_interviews: 8,
+            active_interviews: 3,
+            completed_interviews: 4,
+            total_responses: 127,
+          },
+          agents: {
+            total_agents: 5,
+            active_agents: 4,
+            avg_response_time: 2.3,
+          },
+          employeesCount: 143,
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadDashboardData()
+  }, [])
+
   return (
     <>
       <PageHeader
@@ -19,27 +83,43 @@ export default function DashboardPage() {
       />
 
       <main className="flex-1 overflow-y-auto p-8 space-y-8">
+        {connectionError && (
+          <Alert variant="destructive">
+            <WifiOff className="h-4 w-4" />
+            <AlertTitle>No se puede conectar al backend</AlertTitle>
+            <AlertDescription>
+              {connectionError}. Mostrando datos de ejemplo. Por favor verifica la variable de entorno
+              NEXT_PUBLIC_API_URL y que el servidor esté ejecutándose.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatsCard
             title="Entrevistas Activas"
-            value={12}
+            value={loading ? "-" : stats.interviews?.active_interviews || 0}
             description="En progreso"
             icon={MessageSquare}
             trend={{ value: 8.2, isPositive: true }}
           />
-          <StatsCard title="Empleados Totales" value={248} description="Registrados en el sistema" icon={Users} />
+          <StatsCard
+            title="Empleados Totales"
+            value={loading ? "-" : stats.employeesCount || 0}
+            description="Registrados en el sistema"
+            icon={Users}
+          />
           <StatsCard
             title="Agentes IA"
-            value={8}
+            value={loading ? "-" : stats.agents?.active_agents || 0}
             description="Configurados y activos"
             icon={Bot}
             trend={{ value: 12.5, isPositive: true }}
           />
           <StatsCard
-            title="Tasa de Respuesta"
-            value="94%"
-            description="Promedio mensual"
+            title="Total Respuestas"
+            value={loading ? "-" : stats.interviews?.total_responses || 0}
+            description="Recolectadas"
             icon={TrendingUp}
             trend={{ value: 3.1, isPositive: true }}
           />
