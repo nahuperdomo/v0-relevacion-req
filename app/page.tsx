@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   AlertCircle,
   WifiOff,
+  Settings,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { interviewsApi, type InterviewStats } from "@/lib/services/interviews"
@@ -84,12 +85,40 @@ export default function DashboardPage() {
 
       <main className="flex-1 overflow-y-auto p-8 space-y-8">
         {connectionError && (
-          <Alert variant="destructive">
-            <WifiOff className="h-4 w-4" />
-            <AlertTitle>No se puede conectar al backend</AlertTitle>
-            <AlertDescription>
-              {connectionError}. Mostrando datos de ejemplo. Por favor verifica la variable de entorno
-              NEXT_PUBLIC_API_URL y que el servidor esté ejecutándose.
+          <Alert variant="destructive" className="border-amber-500/50 bg-amber-500/10">
+            <WifiOff className="h-5 w-5 text-amber-400" />
+            <AlertTitle className="text-amber-400 font-semibold">Backend no conectado</AlertTitle>
+            <AlertDescription className="text-amber-200/90 mt-2 space-y-3">
+              <p>
+                No se puede conectar al servidor API. La interfaz está funcionando con datos de ejemplo para que puedas
+                explorar el diseño.
+              </p>
+              <div className="flex flex-col gap-2 pt-2">
+                <p className="font-medium text-amber-300">Para conectar con tu backend:</p>
+                <ol className="list-decimal list-inside space-y-1 text-sm">
+                  <li>Abre el sidebar del chat y ve a la sección "Vars"</li>
+                  <li>
+                    Agrega la variable de entorno:{" "}
+                    <code className="bg-background/50 px-1.5 py-0.5 rounded text-amber-100">NEXT_PUBLIC_API_URL</code>
+                  </li>
+                  <li>
+                    Configura el valor con la URL de tu backend (ej:{" "}
+                    <code className="bg-background/50 px-1.5 py-0.5 rounded text-amber-100">
+                      http://localhost:8000/api/v1
+                    </code>
+                    )
+                  </li>
+                  <li>Asegúrate de que tu servidor backend esté ejecutándose</li>
+                </ol>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 border-amber-400/50 hover:bg-amber-400/20 text-amber-300 bg-transparent"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Ver guía de configuración
+              </Button>
             </AlertDescription>
           </Alert>
         )}

@@ -274,6 +274,7 @@ export default function EntrevistasPage() {
                         <div className="flex justify-end gap-2">
                           {interview.status === "DRAFT" && (
                             <Button
+                              key={`start-${interview.interview_id}`}
                               variant="ghost"
                               size="sm"
                               className="gap-1.5"
@@ -285,11 +286,17 @@ export default function EntrevistasPage() {
                           )}
                           {interview.status === "ACTIVE" && (
                             <>
-                              <Button variant="ghost" size="sm" className="gap-1.5">
+                              <Button
+                                key={`view-${interview.interview_id}`}
+                                variant="ghost"
+                                size="sm"
+                                className="gap-1.5"
+                              >
                                 <Eye className="h-3.5 w-3.5" />
                                 Ver
                               </Button>
                               <Button
+                                key={`pause-${interview.interview_id}`}
                                 variant="ghost"
                                 size="sm"
                                 className="gap-1.5"
@@ -301,15 +308,21 @@ export default function EntrevistasPage() {
                             </>
                           )}
                           {interview.status === "COMPLETED" && (
-                            <Button variant="ghost" size="sm" className="gap-1.5">
+                            <Button
+                              key={`results-${interview.interview_id}`}
+                              variant="ghost"
+                              size="sm"
+                              className="gap-1.5"
+                            >
                               <Eye className="h-3.5 w-3.5" />
                               Resultados
                             </Button>
                           )}
-                          <Button variant="ghost" size="sm">
+                          <Button key={`edit-${interview.interview_id}`} variant="ghost" size="sm">
                             <Edit className="h-3.5 w-3.5" />
                           </Button>
                           <Button
+                            key={`delete-${interview.interview_id}`}
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteInterview(interview.interview_id)}
