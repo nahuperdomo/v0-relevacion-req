@@ -1,0 +1,251 @@
+"use client"
+import { PageHeader } from "@/components/page-header"
+import { StatsCard } from "@/components/stats-card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Users, MessageSquare, Bot, TrendingUp, Activity, Clock, CheckCircle2, AlertCircle } from "lucide-react"
+
+export default function DashboardPage() {
+  return (
+    <>
+      <PageHeader
+        title="Dashboard"
+        description="Vista general del sistema de relevamiento"
+        action={{
+          label: "Nueva Entrevista",
+          onClick: () => console.log("Nueva entrevista"),
+        }}
+      />
+
+      <main className="flex-1 overflow-y-auto p-8 space-y-8">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StatsCard
+            title="Entrevistas Activas"
+            value={12}
+            description="En progreso"
+            icon={MessageSquare}
+            trend={{ value: 8.2, isPositive: true }}
+          />
+          <StatsCard title="Empleados Totales" value={248} description="Registrados en el sistema" icon={Users} />
+          <StatsCard
+            title="Agentes IA"
+            value={8}
+            description="Configurados y activos"
+            icon={Bot}
+            trend={{ value: 12.5, isPositive: true }}
+          />
+          <StatsCard
+            title="Tasa de Respuesta"
+            value="94%"
+            description="Promedio mensual"
+            icon={TrendingUp}
+            trend={{ value: 3.1, isPositive: true }}
+          />
+        </div>
+
+        {/* Recent Activity & Quick Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Recent Interviews */}
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold">Entrevistas Recientes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[
+                  {
+                    id: "int-it-002",
+                    title: "Cuellos de Botella en IT",
+                    section: "Tecnología",
+                    status: "in_progress",
+                    responses: 12,
+                    total: 18,
+                  },
+                  {
+                    id: "int-rrhh-001",
+                    title: "Procesos de Onboarding",
+                    section: "RRHH",
+                    status: "completed",
+                    responses: 24,
+                    total: 24,
+                  },
+                  {
+                    id: "int-cont-003",
+                    title: "Automatización Contable",
+                    section: "Contabilidad",
+                    status: "in_progress",
+                    responses: 8,
+                    total: 15,
+                  },
+                  {
+                    id: "int-mkt-004",
+                    title: "Eficiencia en Campañas",
+                    section: "Marketing",
+                    status: "pending",
+                    responses: 0,
+                    total: 20,
+                  },
+                ].map((interview) => (
+                  <div
+                    key={interview.id}
+                    className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                        {interview.status === "completed" ? (
+                          <CheckCircle2 className="h-5 w-5 text-accent" />
+                        ) : interview.status === "in_progress" ? (
+                          <Activity className="h-5 w-5 text-primary" />
+                        ) : (
+                          <Clock className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-card-foreground">{interview.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {interview.section} • {interview.id}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-card-foreground">
+                          {interview.responses}/{interview.total}
+                        </p>
+                        <p className="text-xs text-muted-foreground">respuestas</p>
+                      </div>
+                      <Badge
+                        variant={
+                          interview.status === "completed"
+                            ? "default"
+                            : interview.status === "in_progress"
+                              ? "secondary"
+                              : "outline"
+                        }
+                      >
+                        {interview.status === "completed"
+                          ? "Completada"
+                          : interview.status === "in_progress"
+                            ? "En Progreso"
+                            : "Pendiente"}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* System Status */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold">Estado del Sistema</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-accent/10">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-accent" />
+                    <span className="text-sm font-medium">API Backend</span>
+                  </div>
+                  <span className="text-xs text-accent">Operativo</span>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-accent/10">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-accent" />
+                    <span className="text-sm font-medium">WhatsApp API</span>
+                  </div>
+                  <span className="text-xs text-accent">Operativo</span>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-accent/10">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-accent" />
+                    <span className="text-sm font-medium">Módulo IA</span>
+                  </div>
+                  <span className="text-xs text-accent">Operativo</span>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-muted-foreground" />
+                    <span className="text-sm font-medium">Workers</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">3 activos</span>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-border">
+                <h4 className="text-sm font-medium mb-3">Alertas</h4>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2 p-2 rounded-lg bg-destructive/10">
+                    <AlertCircle className="h-4 w-4 text-destructive mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-destructive">Cola de mensajes alta</p>
+                      <p className="text-xs text-muted-foreground">142 mensajes pendientes</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Button className="w-full bg-transparent" variant="outline">
+                Ver Estado Completo
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Sections Overview */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">Resumen por Sección</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                {
+                  name: "Tecnología",
+                  employees: 45,
+                  interviews: 3,
+                  color: "bg-primary",
+                },
+                {
+                  name: "RRHH",
+                  employees: 28,
+                  interviews: 2,
+                  color: "bg-accent",
+                },
+                {
+                  name: "Contabilidad",
+                  employees: 32,
+                  interviews: 1,
+                  color: "bg-chart-3",
+                },
+                {
+                  name: "Marketing",
+                  employees: 38,
+                  interviews: 2,
+                  color: "bg-chart-4",
+                },
+              ].map((section) => (
+                <div
+                  key={section.name}
+                  className="p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`h-3 w-3 rounded-full ${section.color}`} />
+                    <h4 className="font-medium text-card-foreground">{section.name}</h4>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">{section.employees} empleados</p>
+                    <p className="text-sm text-muted-foreground">{section.interviews} entrevistas activas</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </main>
+    </>
+  )
+}
