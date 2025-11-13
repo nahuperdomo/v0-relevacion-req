@@ -271,7 +271,7 @@ export default function EntrevistasPage() {
                         {interview.responses_count}/{interview.target_employees.length}
                       </TableCell>
                       <TableCell>
-                        <div className="flex justify-end gap-2">
+                        <div key={`actions-${interview.interview_id}`} className="flex justify-end gap-2">
                           {interview.status === "DRAFT" && (
                             <Button
                               key={`start-${interview.interview_id}`}
