@@ -9,7 +9,15 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -162,6 +170,9 @@ export default function AgentesPage() {
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Crear Nuevo Agente IA</DialogTitle>
+                <DialogDescription>
+                  Configura un nuevo agente conversacional para una sección específica
+                </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
@@ -432,6 +443,7 @@ export default function AgentesPage() {
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Configurar {selectedAgent.name}</DialogTitle>
+                <DialogDescription>Modifica la configuración del agente conversacional</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">

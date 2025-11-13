@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, Eye, Download, TrendingUp, AlertCircle, CheckCircle2, Clock, BarChart3, FileText } from "lucide-react"
 
@@ -343,7 +343,7 @@ export default function ReportesPage() {
                           <div className="flex gap-0.5">
                             {Array.from({ length: 5 }).map((_, i) => (
                               <div
-                                key={i}
+                                key={`urgency-${result.id}-${i}`}
                                 className={`h-2 w-2 rounded-full ${
                                   i < result.urgencyLevel
                                     ? result.urgencyLevel >= 4
@@ -399,6 +399,7 @@ export default function ReportesPage() {
             <DialogContent className="max-w-3xl">
               <DialogHeader>
                 <DialogTitle>Detalle del Resultado</DialogTitle>
+                <DialogDescription>Información completa de la entrevista y análisis de resultados</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -431,7 +432,7 @@ export default function ReportesPage() {
                       <div className="flex gap-0.5">
                         {Array.from({ length: 5 }).map((_, i) => (
                           <div
-                            key={i}
+                            key={`detail-urgency-${selectedResult.id}-${i}`}
                             className={`h-3 w-3 rounded-full ${
                               i < selectedResult.urgencyLevel
                                 ? selectedResult.urgencyLevel >= 4
@@ -470,7 +471,7 @@ export default function ReportesPage() {
                     <div className="text-sm text-muted-foreground mb-2">Problemas Críticos</div>
                     <ul className="space-y-1">
                       {selectedResult.criticalIssues.map((issue, i) => (
-                        <li key={i} className="text-sm text-red-400">
+                        <li key={`critical-${i}`} className="text-sm text-red-400">
                           • {issue}
                         </li>
                       ))}
@@ -483,7 +484,7 @@ export default function ReportesPage() {
                     <div className="text-sm text-muted-foreground mb-2">Oportunidades de Mejora</div>
                     <ul className="space-y-1">
                       {selectedResult.improvementOpportunities.map((opp, i) => (
-                        <li key={i} className="text-sm text-emerald-400">
+                        <li key={`improvement-${i}`} className="text-sm text-emerald-400">
                           • {opp}
                         </li>
                       ))}

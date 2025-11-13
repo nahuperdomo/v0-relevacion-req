@@ -10,7 +10,15 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -171,6 +179,9 @@ export default function EmpleadosPage() {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Registrar Nuevo Empleado</DialogTitle>
+                    <DialogDescription>
+                      Completa el formulario para registrar un nuevo empleado en el sistema
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
@@ -335,6 +346,9 @@ export default function EmpleadosPage() {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Crear Nueva Sección</DialogTitle>
+                    <DialogDescription>
+                      Completa el formulario para crear una nueva sección organizacional
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
