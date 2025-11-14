@@ -28,6 +28,8 @@ export default function DashboardPage() {
     agents?: AgentStats
     employeesCount?: number
   }>({})
+  const [recentInterviews, setRecentInterviews] = useState<any[]>([])
+  const [sectionsSummary, setSectionsSummary] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [connectionError, setConnectionError] = useState<string | null>(null)
 
@@ -35,10 +37,12 @@ export default function DashboardPage() {
     const loadDashboardData = async () => {
       try {
         setConnectionError(null)
-        const [interviewStats, agentStats, employeesData] = await Promise.all([
+        const [interviewStats, agentStats, employeesData, interviewsData, sectionsData] = await Promise.all([
           interviewsApi.getStats(),
           agentsApi.getStats(),
           employeesApi.getAll({ limit: 1 }),
+          interviewsApi.getAll({ limit: 4 }),
+          employeesApi.getAll({ limit: 1000 }), // Para contar por sección
         ])
 
         setStats({
@@ -46,24 +50,33 @@ export default function DashboardPage() {
           agents: agentStats,
           employeesCount: employeesData.total,
         })
+        
+        setRecentInterviews(interviewsData.interviews)
+        
+        // Agrupar empleados por sección
+        const sectionMap = new Map()
+        employeesData.employees.forEach((emp: any) => {
+          if (!sectionMap.has(emp.section_id)) {
+            sectionMap.set(emp.section_id, { employees: 0, interviews: 0 })
+          }
+          sectionMap.get(emp.section_id).employees++
+        })
+        
+        // Contar entrevistas por sección
+        interviewsData.interviews.forEach((interview: any) => {
+          if (sectionMap.has(interview.section_id)) {
+            sectionMap.get(interview.section_id).interviews++
+          }
+        })
+        
+        setSectionsSummary(Array.from(sectionMap.entries()).map(([id, data]) => ({
+          section_id: id,
+          ...data
+        })))
+        
       } catch (error: any) {
         console.error("[v0] Error cargando datos del dashboard:", error)
         setConnectionError(error.message || "Error al cargar los datos")
-
-        setStats({
-          interviews: {
-            total_interviews: 8,
-            active_interviews: 3,
-            completed_interviews: 4,
-            total_responses: 127,
-          },
-          agents: {
-            total_agents: 5,
-            active_agents: 4,
-            avg_response_time: 2.3,
-          },
-          employeesCount: 143,
-        })
       } finally {
         setLoading(false)
       }
@@ -163,86 +176,61 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {[
-                  {
-                    id: "int-it-002",
-                    title: "Cuellos de Botella en IT",
-                    section: "Tecnología",
-                    status: "in_progress",
-                    responses: 12,
-                    total: 18,
-                  },
-                  {
-                    id: "int-rrhh-001",
-                    title: "Procesos de Onboarding",
-                    section: "RRHH",
-                    status: "completed",
-                    responses: 24,
-                    total: 24,
-                  },
-                  {
-                    id: "int-cont-003",
-                    title: "Automatización Contable",
-                    section: "Contabilidad",
-                    status: "in_progress",
-                    responses: 8,
-                    total: 15,
-                  },
-                  {
-                    id: "int-mkt-004",
-                    title: "Eficiencia en Campañas",
-                    section: "Marketing",
-                    status: "pending",
-                    responses: 0,
-                    total: 20,
-                  },
-                ].map((interview) => (
-                  <div
-                    key={interview.id}
-                    className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                        {interview.status === "completed" ? (
-                          <CheckCircle2 className="h-5 w-5 text-accent" />
-                        ) : interview.status === "in_progress" ? (
-                          <Activity className="h-5 w-5 text-primary" />
-                        ) : (
-                          <Clock className="h-5 w-5 text-muted-foreground" />
-                        )}
+                {loading ? (
+                  <p className="text-sm text-muted-foreground">Cargando...</p>
+                ) : recentInterviews.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No hay entrevistas recientes</p>
+                ) : (
+                  recentInterviews.map((interview) => (
+                    <div
+                      key={interview.interview_id}
+                      className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                          {interview.status === "COMPLETED" ? (
+                            <CheckCircle2 className="h-5 w-5 text-accent" />
+                          ) : interview.status === "ACTIVE" ? (
+                            <Activity className="h-5 w-5 text-primary" />
+                          ) : (
+                            <Clock className="h-5 w-5 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-card-foreground">{interview.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {interview.section_id} • {interview.interview_id}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-card-foreground">{interview.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {interview.section} • {interview.id}
-                        </p>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-card-foreground">
+                            {interview.responses_count}/{interview.target_employees?.length || 0}
+                          </p>
+                          <p className="text-xs text-muted-foreground">respuestas</p>
+                        </div>
+                        <Badge
+                          variant={
+                            interview.status === "COMPLETED"
+                              ? "default"
+                              : interview.status === "ACTIVE"
+                                ? "secondary"
+                                : "outline"
+                          }
+                        >
+                          {interview.status === "COMPLETED"
+                            ? "Completada"
+                            : interview.status === "ACTIVE"
+                              ? "Activa"
+                              : interview.status === "PAUSED"
+                                ? "Pausada"
+                                : "Borrador"}
+                        </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-card-foreground">
-                          {interview.responses}/{interview.total}
-                        </p>
-                        <p className="text-xs text-muted-foreground">respuestas</p>
-                      </div>
-                      <Badge
-                        variant={
-                          interview.status === "completed"
-                            ? "default"
-                            : interview.status === "in_progress"
-                              ? "secondary"
-                              : "outline"
-                        }
-                      >
-                        {interview.status === "completed"
-                          ? "Completada"
-                          : interview.status === "in_progress"
-                            ? "En Progreso"
-                            : "Pendiente"}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -284,19 +272,6 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-border">
-                <h4 className="text-sm font-medium mb-3">Alertas</h4>
-                <div className="space-y-2">
-                  <div className="flex items-start gap-2 p-2 rounded-lg bg-destructive/10">
-                    <AlertCircle className="h-4 w-4 text-destructive mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-destructive">Cola de mensajes alta</p>
-                      <p className="text-xs text-muted-foreground">142 mensajes pendientes</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               <Button className="w-full bg-transparent" variant="outline">
                 Ver Estado Completo
               </Button>
@@ -311,46 +286,27 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[
-                {
-                  name: "Tecnología",
-                  employees: 45,
-                  interviews: 3,
-                  color: "bg-primary",
-                },
-                {
-                  name: "RRHH",
-                  employees: 28,
-                  interviews: 2,
-                  color: "bg-accent",
-                },
-                {
-                  name: "Contabilidad",
-                  employees: 32,
-                  interviews: 1,
-                  color: "bg-chart-3",
-                },
-                {
-                  name: "Marketing",
-                  employees: 38,
-                  interviews: 2,
-                  color: "bg-chart-4",
-                },
-              ].map((section) => (
-                <div
-                  key={section.name}
-                  className="p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`h-3 w-3 rounded-full ${section.color}`} />
-                    <h4 className="font-medium text-card-foreground">{section.name}</h4>
+              {loading ? (
+                <p className="text-sm text-muted-foreground col-span-full">Cargando...</p>
+              ) : sectionsSummary.length === 0 ? (
+                <p className="text-sm text-muted-foreground col-span-full">No hay secciones registradas</p>
+              ) : (
+                sectionsSummary.slice(0, 4).map((section, index) => (
+                  <div
+                    key={section.section_id}
+                    className="p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`h-3 w-3 rounded-full bg-primary`} />
+                      <h4 className="font-medium text-card-foreground">{section.section_id}</h4>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">{section.employees} empleados</p>
+                      <p className="text-sm text-muted-foreground">{section.interviews} entrevistas activas</p>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">{section.employees} empleados</p>
-                    <p className="text-sm text-muted-foreground">{section.interviews} entrevistas activas</p>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

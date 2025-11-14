@@ -9,7 +9,7 @@ export interface Interview {
   topics: string[]
   duration_minutes: number
   type: "INDIVIDUAL" | "GROUP" | "FOLLOW_UP"
-  status: "DRAFT" | "ACTIVE" | "PAUSED" | "COMPLETED" | "ARCHIVED"
+  status: "DRAFT" | "PENDING" | "IN_PROGRESS" | "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED" | "ARCHIVED"
   target_employees: string[]
   responses_count: number
   completion_percentage: number
@@ -139,5 +139,81 @@ export const interviewsApi = {
 
   getBySection: async (sectionId: string): Promise<Interview[]> => {
     return fetchApi(`/interviews/section/${sectionId}`)
+  },
+
+  executeForEmployees: async (data: {
+    interview_id: string
+    employee_ids: string[]
+    start_immediately?: boolean
+    scheduled_start?: string
+  }): Promise<{
+    execution_id: string
+    interview_id: string
+    employees_count: number
+    status: string
+    initiated_at: string
+  }> => {
+    return fetchApi("/interviews/execute/employees", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  },
+
+  executeForSection: async (data: {
+    interview_id: string
+    section_id: string
+    exclude_employees?: string[]
+    start_immediately?: boolean
+    scheduled_start?: string
+  }): Promise<{
+    execution_id: string
+    interview_id: string
+    section_id: string
+    employees_count: number
+    status: string
+    initiated_at: string
+  }> => {
+    return fetchApi("/interviews/execute/section", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  },
+
+  getExecutionStatus: async (
+    executionId: string,
+  ): Promise<{
+    execution_id: string
+    status: string
+    progress: {
+      total: number
+      sent: number
+      pending: number
+      failed: number
+    }
+    started_at: string
+    completed_at?: string
+  }> => {
+    return fetchApi(`/interviews/execution/${executionId}/status`)
+  },
+
+  getExecutionConversations: async (executionId: string): Promise<any[]> => {
+    return fetchApi(`/interviews/execution/${executionId}/conversations`)
+  },
+
+  stopExecution: async (
+    executionId: string,
+  ): Promise<{
+    execution_id: string
+    status: string
+    stopped_at: string
+    message: string
+  }> => {
+    return fetchApi(`/interviews/execution/${executionId}/stop`, {
+      method: "POST",
+    })
+  },
+
+  getActiveExecutions: async (): Promise<any[]> => {
+    return fetchApi("/interviews/executions/active")
   },
 }

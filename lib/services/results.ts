@@ -151,8 +151,25 @@ export const resultsApi = {
     downloadUrl: string
     message: string
   }> => {
-    return fetchApi(`/results/${id}/export?format=${format}`, {
+    return fetchApi(`/results/${id}/export`, {
       method: "POST",
+      body: JSON.stringify({ format }),
     })
+  },
+
+  getReport: async (id: string): Promise<any> => {
+    return fetchApi(`/results/report/${id}`)
+  },
+
+  compareResults: async (params: {
+    result_ids: string[]
+    comparison_type?: string
+  }): Promise<any> => {
+    const queryParams = new URLSearchParams()
+    queryParams.append("result_ids", params.result_ids.join(","))
+    if (params.comparison_type) {
+      queryParams.append("comparison_type", params.comparison_type)
+    }
+    return fetchApi(`/results/compare?${queryParams.toString()}`)
   },
 }

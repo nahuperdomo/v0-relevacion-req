@@ -39,4 +39,10 @@ export const sectionsApi = {
       body: JSON.stringify(data),
     })
   },
+
+  delete: async (id: string): Promise<{ message: string }> => {
+    return fetchApi(`/sections/${id}`, {
+      method: "DELETE",
+    })
+  },
 }

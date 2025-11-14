@@ -68,13 +68,24 @@ export default function ReportesPage() {
     }
   }
 
-  const handleExport = async (format: "pdf" | "excel" | "json" = "pdf") => {
+  const handleExport = async (resultId: string, format: "pdf" | "excel" | "json" = "pdf") => {
     try {
       toast({
         title: "Exportando",
         description: "Generando el reporte...",
       })
-      // Aquí se implementaría la lógica de exportación real
+      
+      const result = await resultsApi.exportResult(resultId, format)
+      
+      toast({
+        title: "Éxito",
+        description: `Reporte exportado en formato ${format.toUpperCase()}`,
+      })
+      
+      // Si hay una URL de descarga, abrirla
+      if (result.downloadUrl) {
+        window.open(result.downloadUrl, '_blank')
+      }
     } catch (error) {
       console.error("[v0] Error exportando:", error)
       toast({
@@ -85,7 +96,45 @@ export default function ReportesPage() {
     }
   }
 
-  const filteredResults = results.filter((result) => {
+  const handleGenerateAggregate = async () => {
+    try {
+      const sectionIds = filterSection === "all" 
+        ? sections.map((s) => s.section_id)
+        : [filterSection]
+
+      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() // últimos 30 días
+      const endDate = new Date().toISOString()
+
+      toast({
+        title: "Generando reporte consolidado",
+        description: "Esto puede tardar unos momentos...",
+      })
+
+      const aggregate = await resultsApi.aggregate({
+        sectionIds,
+        startDate,
+        endDate,
+        criticalOnly: false,
+      })
+
+      toast({
+        title: "Reporte generado",
+        description: "El reporte consolidado está listo",
+      })
+
+      // Aquí podrías mostrar el reporte en un diálogo o redirigir a una página de detalle
+      console.log("Aggregate report:", aggregate)
+    } catch (error) {
+      console.error("[v0] Error generando reporte consolidado:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo generar el reporte consolidado",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const filteredResults = (results || []).filter((result) => {
     const matchesSearch =
       result.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
       result.topicsDetected.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -98,20 +147,20 @@ export default function ReportesPage() {
   })
 
   const urgencyDistribution = {
-    high: results.filter((r) => r.urgencyLevel >= 4).length,
-    medium: results.filter((r) => r.urgencyLevel === 3).length,
-    low: results.filter((r) => r.urgencyLevel <= 2).length,
+    high: (results || []).filter((r) => r.urgencyLevel >= 4).length,
+    medium: (results || []).filter((r) => r.urgencyLevel === 3).length,
+    low: (results || []).filter((r) => r.urgencyLevel <= 2).length,
   }
 
   const sentimentDistribution = {
-    positive: results.filter((r) => r.sentiment === "positive").length,
-    neutral: results.filter((r) => r.sentiment === "neutral").length,
-    negative: results.filter((r) => r.sentiment === "negative").length,
+    positive: (results || []).filter((r) => r.sentiment === "positive").length,
+    neutral: (results || []).filter((r) => r.sentiment === "neutral").length,
+    negative: (results || []).filter((r) => r.sentiment === "negative").length,
   }
 
   const getTopTopics = () => {
     const topicCounts: Record<string, number> = {}
-    results.forEach((r) => {
+    ;(results || []).forEach((r) => {
       r.topicsDetected.forEach((topic) => {
         topicCounts[topic] = (topicCounts[topic] || 0) + 1
       })
@@ -152,10 +201,11 @@ export default function ReportesPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas las secciones</SelectItem>
-              <SelectItem value="Tecnología">Tecnología</SelectItem>
-              <SelectItem value="Recursos Humanos">Recursos Humanos</SelectItem>
-              <SelectItem value="Contabilidad">Contabilidad</SelectItem>
-              <SelectItem value="Ventas">Ventas</SelectItem>
+              {sections.map((section) => (
+                <SelectItem key={section.section_id} value={section.section_id}>
+                  {section.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
@@ -171,14 +221,9 @@ export default function ReportesPage() {
             </SelectContent>
           </Select>
 
-          <Button className="gap-2" onClick={() => handleExport("pdf")}>
-            <Download className="h-4 w-4" />
-            Exportar
-          </Button>
-
-          <Button variant="outline" className="gap-2 bg-transparent">
+          <Button variant="outline" className="gap-2 bg-transparent" onClick={handleGenerateAggregate}>
             <BarChart3 className="h-4 w-4" />
-            Resumen General
+            Resumen Consolidado
           </Button>
         </div>
 
@@ -189,7 +234,7 @@ export default function ReportesPage() {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{results.length}</div>
+              <div className="text-3xl font-bold">{results?.length || 0}</div>
             </CardContent>
           </Card>
 
@@ -212,7 +257,7 @@ export default function ReportesPage() {
             <CardContent>
               <div className="text-3xl font-bold text-emerald-400">{sentimentDistribution.positive}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {results.length > 0 ? Math.round((sentimentDistribution.positive / results.length) * 100) : 0}% del
+                {(results?.length || 0) > 0 ? Math.round((sentimentDistribution.positive / (results?.length || 1)) * 100) : 0}% del
                 total
               </p>
             </CardContent>
@@ -374,7 +419,7 @@ export default function ReportesPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-2">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -383,6 +428,14 @@ export default function ReportesPage() {
                           >
                             <Eye className="h-3.5 w-3.5" />
                             Ver Detalle
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={() => handleExport(result.id, "pdf")}
+                          >
+                            <Download className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </TableCell>

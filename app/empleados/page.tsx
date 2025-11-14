@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { employeesApi, type Employee, type CreateEmployeeData } from "@/lib/services/employees"
 import { sectionsApi, type Section, type CreateSectionData } from "@/lib/services/sections"
+import { agentsApi, type Agent } from "@/lib/services/agents"
 import { useToast } from "@/hooks/use-toast"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -27,21 +28,58 @@ import { Plus, Search, Edit, Trash2, Building2, Users } from "lucide-react"
 const statusColors = {
   ACTIVE: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   INACTIVE: "bg-slate-500/10 text-slate-400 border-slate-500/20",
+  ON_LEAVE: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  TERMINATED: "bg-red-500/10 text-red-400 border-red-500/20",
 }
 
 const statusLabels = {
   ACTIVE: "Activo",
   INACTIVE: "Inactivo",
+  ON_LEAVE: "De Licencia",
+  TERMINATED: "Desvinculado",
 }
 
 export default function EmpleadosPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [sections, setSections] = useState<Section[]>([])
+  const [agents, setAgents] = useState<Agent[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [isCreateEmployeeDialogOpen, setIsCreateEmployeeDialogOpen] = useState(false)
   const [isCreateSectionDialogOpen, setIsCreateSectionDialogOpen] = useState(false)
+  const [isEditEmployeeDialogOpen, setIsEditEmployeeDialogOpen] = useState(false)
+  const [isEditSectionDialogOpen, setIsEditSectionDialogOpen] = useState(false)
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+  const [selectedSection, setSelectedSection] = useState<Section | null>(null)
   const { toast } = useToast()
+
+  // Form states
+  const [employeeFormData, setEmployeeFormData] = useState({
+    name: "",
+    section_id: "",
+    job_id: "",
+    whatsapp_number: "",
+    email: "",
+  })
+
+  const [sectionFormData, setSectionFormData] = useState({
+    name: "",
+    agent_id: "",
+    admin_id: typeof window !== "undefined" ? localStorage.getItem("admin_id") || "admin-default" : "admin-default",
+  })
+
+  const [editEmployeeFormData, setEditEmployeeFormData] = useState({
+    name: "",
+    section_id: "",
+    job_id: "",
+    whatsapp_number: "",
+    email: "",
+  })
+
+  const [editSectionFormData, setEditSectionFormData] = useState({
+    name: "",
+    agent_id: "",
+  })
 
   useEffect(() => {
     loadData()
@@ -50,13 +88,15 @@ export default function EmpleadosPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [employeesData, sectionsData] = await Promise.all([
+      const [employeesData, sectionsData, agentsData] = await Promise.all([
         employeesApi.getAll({ limit: 100 }),
         sectionsApi.getAll(),
+        agentsApi.getAll({ limit: 100 }),
       ])
 
       setEmployees(employeesData.employees)
       setSections(sectionsData)
+      setAgents(agentsData.agents)
     } catch (error) {
       console.error("[v0] Error cargando datos:", error)
       toast({
@@ -69,11 +109,42 @@ export default function EmpleadosPage() {
     }
   }
 
-  const handleCreateEmployee = async (data: CreateEmployeeData) => {
+  const handleCreateEmployee = async () => {
     try {
+      if (!employeeFormData.name || !employeeFormData.section_id || !employeeFormData.whatsapp_number) {
+        toast({
+          title: "Error de validación",
+          description: "Por favor completa todos los campos requeridos",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const data: CreateEmployeeData = {
+        name: employeeFormData.name,
+        section_id: employeeFormData.section_id,
+        job_id: employeeFormData.job_id || "",
+        contact_info: {
+          whatsapp_number: employeeFormData.whatsapp_number,
+          email: employeeFormData.email,
+        },
+        interviews_assigned: [],
+        status: "ACTIVE",
+      }
+
       const newEmployee = await employeesApi.create(data)
       setEmployees([...employees, newEmployee])
       setIsCreateEmployeeDialogOpen(false)
+
+      // Reset form
+      setEmployeeFormData({
+        name: "",
+        section_id: "",
+        job_id: "",
+        whatsapp_number: "",
+        email: "",
+      })
+
       toast({
         title: "Éxito",
         description: "Empleado registrado correctamente",
@@ -88,11 +159,68 @@ export default function EmpleadosPage() {
     }
   }
 
-  const handleCreateSection = async (data: CreateSectionData) => {
+  const handleUpdateEmployee = async () => {
+    if (!selectedEmployee) return
+
     try {
+      const data: Partial<CreateEmployeeData> = {
+        name: editEmployeeFormData.name,
+        section_id: editEmployeeFormData.section_id,
+        job_id: editEmployeeFormData.job_id,
+        contact_info: {
+          whatsapp_number: editEmployeeFormData.whatsapp_number,
+          email: editEmployeeFormData.email,
+        },
+      }
+
+      const updated = await employeesApi.update(selectedEmployee.employee_id, data)
+      setEmployees(employees.map((e) => (e.employee_id === selectedEmployee.employee_id ? updated : e)))
+      setIsEditEmployeeDialogOpen(false)
+      setSelectedEmployee(null)
+
+      toast({
+        title: "Éxito",
+        description: "Empleado actualizado correctamente",
+      })
+    } catch (error) {
+      console.error("[v0] Error actualizando empleado:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el empleado",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleCreateSection = async () => {
+    try {
+      if (!sectionFormData.name || !sectionFormData.agent_id) {
+        toast({
+          title: "Error de validación",
+          description: "Por favor completa todos los campos requeridos",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const data: CreateSectionData = {
+        name: sectionFormData.name,
+        agent_id: sectionFormData.agent_id,
+        admin_id: sectionFormData.admin_id,
+        interviews_configured: [],
+      }
+
       const newSection = await sectionsApi.create(data)
       setSections([...sections, newSection])
       setIsCreateSectionDialogOpen(false)
+
+      // Reset form
+      setSectionFormData({
+        name: "",
+        agent_id: "",
+        admin_id: typeof window !== "undefined" ? localStorage.getItem("admin_id") || "admin-default" : "admin-default",
+      })
+
       toast({
         title: "Éxito",
         description: "Sección creada correctamente",
@@ -102,6 +230,34 @@ export default function EmpleadosPage() {
       toast({
         title: "Error",
         description: "No se pudo crear la sección",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleUpdateSection = async () => {
+    if (!selectedSection) return
+
+    try {
+      const data: Partial<CreateSectionData> = {
+        name: editSectionFormData.name,
+        agent_id: editSectionFormData.agent_id,
+      }
+
+      const updated = await sectionsApi.update(selectedSection.section_id, data)
+      setSections(sections.map((s) => (s.section_id === selectedSection.section_id ? updated : s)))
+      setIsEditSectionDialogOpen(false)
+      setSelectedSection(null)
+
+      toast({
+        title: "Éxito",
+        description: "Sección actualizada correctamente",
+      })
+    } catch (error) {
+      console.error("[v0] Error actualizando sección:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar la sección",
         variant: "destructive",
       })
     }
@@ -120,6 +276,24 @@ export default function EmpleadosPage() {
       toast({
         title: "Error",
         description: "No se pudo eliminar el empleado",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDeleteSection = async (id: string) => {
+    try {
+      await sectionsApi.delete(id)
+      setSections(sections.filter((s) => s.section_id !== id))
+      toast({
+        title: "Sección eliminada",
+        description: "La sección ha sido eliminada",
+      })
+    } catch (error) {
+      console.error("[v0] Error eliminando sección:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la sección",
         variant: "destructive",
       })
     }
@@ -186,12 +360,20 @@ export default function EmpleadosPage() {
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label htmlFor="employee-name">Nombre Completo</Label>
-                      <Input id="employee-name" placeholder="Ej: Juan Pérez" />
+                      <Input
+                        id="employee-name"
+                        placeholder="Ej: Juan Pérez"
+                        value={employeeFormData.name}
+                        onChange={(e) => setEmployeeFormData({ ...employeeFormData, name: e.target.value })}
+                      />
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="employee-section">Sección</Label>
-                      <Select>
+                      <Select
+                        value={employeeFormData.section_id}
+                        onValueChange={(value) => setEmployeeFormData({ ...employeeFormData, section_id: value })}
+                      >
                         <SelectTrigger id="employee-section">
                           <SelectValue placeholder="Selecciona una sección" />
                         </SelectTrigger>
@@ -206,15 +388,32 @@ export default function EmpleadosPage() {
                     </div>
 
                     <div className="space-y-2">
+                      <Label htmlFor="employee-email">Email</Label>
+                      <Input
+                        id="employee-email"
+                        placeholder="juan@empresa.com"
+                        type="email"
+                        value={employeeFormData.email}
+                        onChange={(e) => setEmployeeFormData({ ...employeeFormData, email: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
                       <Label htmlFor="employee-whatsapp">Número de WhatsApp</Label>
-                      <Input id="employee-whatsapp" placeholder="+5491122233344" type="tel" />
+                      <Input
+                        id="employee-whatsapp"
+                        placeholder="+5491122233344"
+                        type="tel"
+                        value={employeeFormData.whatsapp_number}
+                        onChange={(e) => setEmployeeFormData({ ...employeeFormData, whatsapp_number: e.target.value })}
+                      />
                     </div>
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setIsCreateEmployeeDialogOpen(false)}>
                       Cancelar
                     </Button>
-                    <Button onClick={() => setIsCreateEmployeeDialogOpen(false)}>Registrar Empleado</Button>
+                    <Button onClick={handleCreateEmployee}>Registrar Empleado</Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -303,7 +502,21 @@ export default function EmpleadosPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex justify-end gap-2">
-                              <Button variant="ghost" size="sm">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedEmployee(employee)
+                                  setEditEmployeeFormData({
+                                    name: employee.name,
+                                    section_id: employee.section_id,
+                                    job_id: employee.job_id,
+                                    whatsapp_number: employee.contact_info.whatsapp_number,
+                                    email: employee.contact_info.email || "",
+                                  })
+                                  setIsEditEmployeeDialogOpen(true)
+                                }}
+                              >
                                 <Edit className="h-3.5 w-3.5" />
                               </Button>
                               <Button
@@ -353,20 +566,29 @@ export default function EmpleadosPage() {
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label htmlFor="section-name">Nombre de la Sección</Label>
-                      <Input id="section-name" placeholder="Ej: Tecnología" />
+                      <Input
+                        id="section-name"
+                        placeholder="Ej: Tecnología"
+                        value={sectionFormData.name}
+                        onChange={(e) => setSectionFormData({ ...sectionFormData, name: e.target.value })}
+                      />
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="section-agent">Agente IA Asignado</Label>
-                      <Select>
+                      <Select
+                        value={sectionFormData.agent_id}
+                        onValueChange={(value) => setSectionFormData({ ...sectionFormData, agent_id: value })}
+                      >
                         <SelectTrigger id="section-agent">
                           <SelectValue placeholder="Selecciona un agente" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="agt-it-001">Agente IT</SelectItem>
-                          <SelectItem value="agt-rrhh-001">Agente RRHH</SelectItem>
-                          <SelectItem value="agt-cont-001">Agente Contable</SelectItem>
-                          <SelectItem value="agt-sales-001">Agente Ventas</SelectItem>
+                          {agents.map((agent) => (
+                            <SelectItem key={agent.agent_id} value={agent.agent_id}>
+                              {agent.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -375,7 +597,7 @@ export default function EmpleadosPage() {
                     <Button variant="outline" onClick={() => setIsCreateSectionDialogOpen(false)}>
                       Cancelar
                     </Button>
-                    <Button onClick={() => setIsCreateSectionDialogOpen(false)}>Crear Sección</Button>
+                    <Button onClick={handleCreateSection}>Crear Sección</Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -406,7 +628,9 @@ export default function EmpleadosPage() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Empleados:</span>
-                          <span className="font-medium text-emerald-400">{section.employee_count}</span>
+                          <span className="font-medium text-emerald-400">
+                            {employees.filter((e) => e.section_id === section.section_id).length}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Entrevistas:</span>
@@ -415,10 +639,27 @@ export default function EmpleadosPage() {
                       </div>
 
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="flex-1 bg-transparent">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 bg-transparent"
+                          onClick={() => {
+                            setSelectedSection(section)
+                            setEditSectionFormData({
+                              name: section.name,
+                              agent_id: section.agent_id,
+                            })
+                            setIsEditSectionDialogOpen(true)
+                          }}
+                        >
                           <Edit className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="outline" size="sm" className="flex-1 bg-transparent">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 bg-transparent"
+                          onClick={() => handleDeleteSection(section.section_id)}
+                        >
                           <Trash2 className="h-3.5 w-3.5 text-red-400" />
                         </Button>
                       </div>
@@ -429,6 +670,134 @@ export default function EmpleadosPage() {
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Edit Employee Dialog */}
+        {selectedEmployee && (
+          <Dialog open={isEditEmployeeDialogOpen} onOpenChange={setIsEditEmployeeDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Editar Empleado</DialogTitle>
+                <DialogDescription>Actualiza la información del empleado</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-employee-name">Nombre Completo</Label>
+                  <Input
+                    id="edit-employee-name"
+                    value={editEmployeeFormData.name}
+                    onChange={(e) => setEditEmployeeFormData({ ...editEmployeeFormData, name: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-employee-section">Sección</Label>
+                  <Select
+                    value={editEmployeeFormData.section_id}
+                    onValueChange={(value) => setEditEmployeeFormData({ ...editEmployeeFormData, section_id: value })}
+                  >
+                    <SelectTrigger id="edit-employee-section">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sections.map((section) => (
+                        <SelectItem key={section.section_id} value={section.section_id}>
+                          {section.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-employee-email">Email</Label>
+                  <Input
+                    id="edit-employee-email"
+                    type="email"
+                    value={editEmployeeFormData.email}
+                    onChange={(e) => setEditEmployeeFormData({ ...editEmployeeFormData, email: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-employee-whatsapp">Número de WhatsApp</Label>
+                  <Input
+                    id="edit-employee-whatsapp"
+                    type="tel"
+                    value={editEmployeeFormData.whatsapp_number}
+                    onChange={(e) =>
+                      setEditEmployeeFormData({ ...editEmployeeFormData, whatsapp_number: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditEmployeeDialogOpen(false)
+                    setSelectedEmployee(null)
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button onClick={handleUpdateEmployee}>Guardar Cambios</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Edit Section Dialog */}
+        {selectedSection && (
+          <Dialog open={isEditSectionDialogOpen} onOpenChange={setIsEditSectionDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Editar Sección</DialogTitle>
+                <DialogDescription>Actualiza la configuración de la sección</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-section-name">Nombre de la Sección</Label>
+                  <Input
+                    id="edit-section-name"
+                    value={editSectionFormData.name}
+                    onChange={(e) => setEditSectionFormData({ ...editSectionFormData, name: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-section-agent">Agente IA Asignado</Label>
+                  <Select
+                    value={editSectionFormData.agent_id}
+                    onValueChange={(value) => setEditSectionFormData({ ...editSectionFormData, agent_id: value })}
+                  >
+                    <SelectTrigger id="edit-section-agent">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {agents.map((agent) => (
+                        <SelectItem key={agent.agent_id} value={agent.agent_id}>
+                          {agent.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditSectionDialogOpen(false)
+                    setSelectedSection(null)
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button onClick={handleUpdateSection}>Guardar Cambios</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </main>
     </>
   )
