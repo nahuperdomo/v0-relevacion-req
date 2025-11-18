@@ -21,7 +21,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Search, Edit, Trash2, Bot, MessageSquare, Zap } from "lucide-react"
+import { Plus, Search, Edit, Trash2, Bot, Copy, Zap } from "lucide-react"
 
 const statusColors = {
   ACTIVE: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
@@ -69,8 +69,8 @@ export default function AgentesPage() {
     section_id: "",
     tone: "PROFESSIONAL",
     model: "gpt-4-turbo",
-    embedding_profile: "",
-    system_prompt: "",
+    embedding_profile: "general_profile",
+    system_prompt: "Eres un asistente conversacional diseñado para realizar entrevistas encubiertas de relevamiento de requerimientos. Tu objetivo es mantener una conversación natural y amigable mientras identificas necesidades, problemas y oportunidades de mejora en el área del empleado.",
   })
 
   // Form state for edit
@@ -101,14 +101,18 @@ export default function AgentesPage() {
   useEffect(() => {
     loadData()
   }, [])
+  
+  useEffect(() => {
+    console.log("[DEBUG] editFormData actualizado:", editFormData)
+  }, [editFormData])
 
   const loadData = async () => {
     try {
       setLoading(true)
       const [agentsData, sectionsData] = await Promise.all([agentsApi.getAll({ limit: 100 }), sectionsApi.getAll()])
 
-      setAgents(agentsData.agents)
-      setSections(sectionsData)
+      setAgents(Array.isArray(agentsData.agents) ? agentsData.agents : [])
+      setSections(Array.isArray(sectionsData) ? sectionsData : [])
     } catch (error) {
       console.error("[v0] Error cargando datos:", error)
       toast({
@@ -124,7 +128,7 @@ export default function AgentesPage() {
   const handleCreateAgent = async () => {
     try {
       // Validar campos requeridos
-      if (!createFormData.name || !createFormData.section_id || !createFormData.embedding_profile) {
+      if (!createFormData.name || !createFormData.embedding_profile) {
         toast({
           title: "Error de validación",
           description: "Por favor completa todos los campos requeridos",
@@ -133,12 +137,15 @@ export default function AgentesPage() {
         return
       }
 
+      // Generar agent_id basado en el nombre
+      const agentId = `agt-${createFormData.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now().toString(36)}`
+
       const data: CreateAgentData = {
+        agent_id: agentId,
         name: createFormData.name,
         description: createFormData.description,
         tone: createFormData.tone,
         embedding_profile: createFormData.embedding_profile,
-        section_id: createFormData.section_id,
         prompt_config: {
           system_prompt: createFormData.system_prompt || "Eres un asistente conversacional profesional.",
           greeting_prompt: "¡Hola! ¿Cómo estás?",
@@ -154,19 +161,24 @@ export default function AgentesPage() {
         specialties: [],
       }
 
+      // Solo agregar section_id si se proporciona
+      if (createFormData.section_id) {
+        data.section_id = createFormData.section_id
+      }
+
       const newAgent = await agentsApi.create(data)
-      setAgents([...agents, newAgent])
+      setAgents([...(agents || []), newAgent])
       setIsCreateDialogOpen(false)
 
-      // Reset form
+      // Reset form a valores por defecto útiles
       setCreateFormData({
         name: "",
         description: "",
         section_id: "",
         tone: "PROFESSIONAL",
         model: "gpt-4-turbo",
-        embedding_profile: "",
-        system_prompt: "",
+        embedding_profile: "general_profile",
+        system_prompt: "Eres un asistente conversacional diseñado para realizar entrevistas encubiertas de relevamiento de requerimientos. Tu objetivo es mantener una conversación natural y amigable mientras identificas necesidades, problemas y oportunidades de mejora en el área del empleado.",
       })
 
       toast({
@@ -208,7 +220,7 @@ export default function AgentesPage() {
       }
 
       const updated = await agentsApi.update(selectedAgent.agent_id, data)
-      setAgents(agents.map((a) => (a.agent_id === selectedAgent.agent_id ? updated : a)))
+      setAgents((agents || []).map((a) => (a.agent_id === selectedAgent.agent_id ? updated : a)))
       setIsEditDialogOpen(false)
       setSelectedAgent(null)
 
@@ -226,22 +238,42 @@ export default function AgentesPage() {
     }
   }
 
-  const handleTestAgent = async (id: string) => {
+  const handleCloneAgent = async (id: string) => {
     try {
-      const result = await agentsApi.test(id, {
-        test_message: "¿Cuáles son los principales desafíos en tu área?",
-        context: "Prueba desde el panel de administración",
-      })
-
+      const clonedAgent = await agentsApi.clone(id)
+      setAgents([...agents, clonedAgent])
+      
+      console.log("[DEBUG] Agente clonado:", clonedAgent)
+      
+      // Precargar el modal de edición con los datos del agente clonado
+      setSelectedAgent(clonedAgent)
+      
+      const formData = {
+        name: clonedAgent.name || "",
+        description: clonedAgent.description || "",
+        section_id: clonedAgent.section_id || "",
+        tone: clonedAgent.tone || "PROFESSIONAL",
+        model: clonedAgent.model_config?.model || "gpt-4-turbo",
+        embedding_profile: clonedAgent.embedding_profile || "",
+        system_prompt: clonedAgent.prompt_config?.system_prompt || "",
+        greeting_prompt: clonedAgent.prompt_config?.greeting_prompt || "",
+        closing_prompt: clonedAgent.prompt_config?.closing_prompt || "",
+        context_instructions: clonedAgent.prompt_config?.context_instructions || "",
+      }
+      
+      console.log("[DEBUG] Form data del agente clonado:", formData)
+      setEditFormData(formData)
+      setIsEditDialogOpen(true)
+      
       toast({
-        title: "Prueba exitosa",
-        description: `Respuesta: ${result.agent_response.substring(0, 100)}...`,
+        title: "Agente duplicado",
+        description: `Se ha creado una copia del agente. Puedes editarlo ahora.`,
       })
     } catch (error) {
-      console.error("[v0] Error probando agente:", error)
+      console.error("[v0] Error duplicando agente:", error)
       toast({
         title: "Error",
-        description: "No se pudo probar el agente",
+        description: "No se pudo duplicar el agente",
         variant: "destructive",
       })
     }
@@ -250,7 +282,7 @@ export default function AgentesPage() {
   const handleDeleteAgent = async (id: string) => {
     try {
       await agentsApi.delete(id)
-      setAgents(agents.filter((a) => a.agent_id !== id))
+      setAgents((agents || []).filter((a) => a.agent_id !== id))
       toast({
         title: "Agente eliminado",
         description: "El agente ha sido desactivado",
@@ -265,14 +297,14 @@ export default function AgentesPage() {
     }
   }
 
-  const filteredAgents = agents.filter(
+  const filteredAgents = (agents || []).filter(
     (agent) =>
       agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       agent.section_id.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
   const getSectionName = (sectionId: string) => {
-    return sections.find((s) => s.section_id === sectionId)?.name || sectionId
+    return (sections || []).find((s) => s.section_id === sectionId)?.name || sectionId
   }
 
   return (
@@ -301,19 +333,19 @@ export default function AgentesPage() {
                 Nuevo Agente
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
+            <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+              <DialogHeader className="flex-shrink-0">
                 <DialogTitle>Crear Nuevo Agente IA</DialogTitle>
                 <DialogDescription>
                   Configura un nuevo agente conversacional para una sección específica
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
+              <div className="space-y-6 py-6 overflow-y-auto flex-1 px-1">
                 <div className="space-y-2">
                   <Label htmlFor="agent-name">Nombre del Agente</Label>
                   <Input
                     id="agent-name"
-                    placeholder="Ej: Agente IT"
+                    placeholder="Ej: Agente de Relevamiento IT"
                     value={createFormData.name}
                     onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
                   />
@@ -323,7 +355,7 @@ export default function AgentesPage() {
                   <Label htmlFor="agent-description">Descripción</Label>
                   <Textarea
                     id="agent-description"
-                    placeholder="Describe el propósito de este agente..."
+                    placeholder="Ej: Agente especializado en identificar necesidades tecnológicas y problemas operativos en el área de IT"
                     value={createFormData.description}
                     onChange={(e) => setCreateFormData({ ...createFormData, description: e.target.value })}
                     rows={3}
@@ -332,16 +364,16 @@ export default function AgentesPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="agent-section">Sección Asignada</Label>
+                    <Label htmlFor="agent-section">Sección Asignada (Opcional)</Label>
                     <Select
                       value={createFormData.section_id}
                       onValueChange={(value) => setCreateFormData({ ...createFormData, section_id: value })}
                     >
                       <SelectTrigger id="agent-section">
-                        <SelectValue placeholder="Selecciona una sección" />
+                        <SelectValue placeholder="Sin sección asignada" />
                       </SelectTrigger>
                       <SelectContent>
-                        {sections.map((section) => (
+                        {(sections || []).map((section) => (
                           <SelectItem key={section.section_id} value={section.section_id}>
                             {section.name}
                           </SelectItem>
@@ -398,25 +430,46 @@ export default function AgentesPage() {
                   <Label htmlFor="agent-embedding">Perfil de Embeddings</Label>
                   <Input
                     id="agent-embedding"
-                    placeholder="Ej: it_operaciones"
+                    placeholder="Ej: it_operations, hr_recruitment, finance_analysis"
                     value={createFormData.embedding_profile}
                     onChange={(e) => setCreateFormData({ ...createFormData, embedding_profile: e.target.value })}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Identificador para el contexto semántico del agente
+                  </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="agent-instructions">Instrucciones del Sistema</Label>
                   <Textarea
                     id="agent-instructions"
-                    placeholder="Define cómo debe comportarse el agente, qué temas debe explorar y cómo guiar la conversación..."
+                    placeholder="Define el comportamiento, tono y objetivos del agente..."
                     value={createFormData.system_prompt}
                     onChange={(e) => setCreateFormData({ ...createFormData, system_prompt: e.target.value })}
-                    rows={5}
+                    className="min-h-[120px] max-h-[300px] resize-y"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Instrucciones base que definen la personalidad y propósito del agente
+                  </p>
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              <DialogFooter className="flex-shrink-0 bg-background pt-6 pb-2 border-t">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsCreateDialogOpen(false)
+                    // Resetear formulario a valores por defecto
+                    setCreateFormData({
+                      name: "",
+                      description: "",
+                      section_id: "",
+                      tone: "PROFESSIONAL",
+                      model: "gpt-4-turbo",
+                      embedding_profile: "general_profile",
+                      system_prompt: "Eres un asistente conversacional diseñado para realizar entrevistas encubiertas de relevamiento de requerimientos. Tu objetivo es mantener una conversación natural y amigable mientras identificas necesidades, problemas y oportunidades de mejora en el área del empleado.",
+                    })
+                  }}
+                >
                   Cancelar
                 </Button>
                 <Button onClick={handleCreateAgent}>Crear Agente</Button>
@@ -431,7 +484,7 @@ export default function AgentesPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Agentes</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{agents.length}</div>
+              <div className="text-3xl font-bold">{(agents || []).length}</div>
             </CardContent>
           </Card>
 
@@ -441,7 +494,7 @@ export default function AgentesPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-emerald-400">
-                {agents.filter((a) => a.status === "ACTIVE").length}
+                {(agents || []).filter((a) => a.status === "ACTIVE").length}
               </div>
             </CardContent>
           </Card>
@@ -452,7 +505,7 @@ export default function AgentesPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-amber-400">
-                {agents.filter((a) => a.status === "TRAINING").length}
+                {(agents || []).filter((a) => a.status === "TRAINING").length}
               </div>
             </CardContent>
           </Card>
@@ -494,7 +547,7 @@ export default function AgentesPage() {
                 <CardContent className="space-y-4">
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm">
-                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                      <Bot className="h-4 w-4 text-muted-foreground" />
                       <span className="text-muted-foreground">Tono:</span>
                       <span className="font-medium">{agent.tone}</span>
                     </div>
@@ -511,6 +564,16 @@ export default function AgentesPage() {
                       <span className="font-medium font-mono text-xs">{agent.embedding_profile}</span>
                     </div>
                   </div>
+
+                  {/* Preview del System Prompt */}
+                  {agent.prompt_config?.system_prompt && (
+                    <div className="rounded-lg bg-violet-500/5 border border-violet-500/20 p-3">
+                      <div className="text-xs font-medium text-violet-400 mb-1">Prompt del Sistema:</div>
+                      <p className="text-xs text-muted-foreground line-clamp-2 font-mono">
+                        {agent.prompt_config.system_prompt}
+                      </p>
+                    </div>
+                  )}
 
                   <div className="rounded-lg bg-muted/30 p-3">
                     <div className="grid grid-cols-2 gap-4 text-sm">
@@ -531,19 +594,24 @@ export default function AgentesPage() {
                       size="sm"
                       className="flex-1 bg-transparent"
                       onClick={() => {
+                        console.log("[DEBUG] Agente seleccionado:", agent)
                         setSelectedAgent(agent)
-                        setEditFormData({
-                          name: agent.name,
-                          description: agent.description,
-                          section_id: agent.section_id,
-                          tone: agent.tone,
-                          model: agent.model_config.model,
-                          embedding_profile: agent.embedding_profile,
-                          system_prompt: agent.prompt_config.system_prompt,
-                          greeting_prompt: agent.prompt_config.greeting_prompt,
-                          closing_prompt: agent.prompt_config.closing_prompt,
-                          context_instructions: agent.prompt_config.context_instructions,
-                        })
+                        
+                        const formData = {
+                          name: agent.name || "",
+                          description: agent.description || "",
+                          section_id: agent.section_id || "",
+                          tone: agent.tone || "PROFESSIONAL",
+                          model: agent.model_config?.model || "gpt-4-turbo",
+                          embedding_profile: agent.embedding_profile || "",
+                          system_prompt: agent.prompt_config?.system_prompt || "",
+                          greeting_prompt: agent.prompt_config?.greeting_prompt || "",
+                          closing_prompt: agent.prompt_config?.closing_prompt || "",
+                          context_instructions: agent.prompt_config?.context_instructions || "",
+                        }
+                        
+                        console.log("[DEBUG] Form data a cargar:", formData)
+                        setEditFormData(formData)
                         setIsEditDialogOpen(true)
                       }}
                     >
@@ -554,10 +622,10 @@ export default function AgentesPage() {
                       variant="outline"
                       size="sm"
                       className="flex-1 bg-transparent"
-                      onClick={() => handleTestAgent(agent.agent_id)}
+                      onClick={() => handleCloneAgent(agent.agent_id)}
                     >
-                      <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-                      Probar
+                      <Copy className="h-3.5 w-3.5 mr-1.5" />
+                      Duplicar
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => handleDeleteAgent(agent.agent_id)}>
                       <Trash2 className="h-3.5 w-3.5 text-red-400" />
@@ -570,13 +638,31 @@ export default function AgentesPage() {
         </div>
 
         {selectedAgent && (
-          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
+          <Dialog 
+            open={isEditDialogOpen} 
+            onOpenChange={(open) => {
+              setIsEditDialogOpen(open)
+              if (!open) {
+                setSelectedAgent(null)
+              }
+            }}
+          >
+            <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+              <DialogHeader className="flex-shrink-0">
                 <DialogTitle>Configurar {selectedAgent.name}</DialogTitle>
                 <DialogDescription>Modifica la configuración del agente conversacional</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
+              <div className="space-y-6 py-6 overflow-y-auto flex-1 px-1">
+                {/* Indicador de valores cargados */}
+                <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3">
+                  <div className="flex items-center gap-2 text-sm text-blue-400">
+                    <Bot className="h-4 w-4" />
+                    <span className="font-medium">
+                      Editando configuración existente - Los campos ya contienen los valores actuales
+                    </span>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label>Nombre del Agente</Label>
                   <Input
@@ -602,10 +688,10 @@ export default function AgentesPage() {
                       onValueChange={(value) => setEditFormData({ ...editFormData, section_id: value })}
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Selecciona una sección" />
                       </SelectTrigger>
                       <SelectContent>
-                        {sections.map((section) => (
+                        {(sections || []).map((section) => (
                           <SelectItem key={section.section_id} value={section.section_id}>
                             {section.name}
                           </SelectItem>
@@ -621,7 +707,7 @@ export default function AgentesPage() {
                       onValueChange={(value) => setEditFormData({ ...editFormData, model: value })}
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Selecciona un modelo" />
                       </SelectTrigger>
                       <SelectContent>
                         {modelOptions.map((option) => (
@@ -646,7 +732,7 @@ export default function AgentesPage() {
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Selecciona un tono" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="PROFESSIONAL">Profesional</SelectItem>
@@ -667,46 +753,69 @@ export default function AgentesPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Prompt del Sistema</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Prompt del Sistema</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {editFormData.system_prompt?.length || 0} caracteres
+                    </span>
+                  </div>
                   <Textarea
                     value={editFormData.system_prompt}
                     onChange={(e) => setEditFormData({ ...editFormData, system_prompt: e.target.value })}
                     placeholder="Define cómo debe comportarse el agente..."
-                    rows={4}
+                    className="min-h-[120px] max-h-[300px] resize-y font-mono text-sm"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Puedes ajustar la altura del campo arrastrando desde la esquina inferior derecha
+                  </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Prompt de Saludo</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Prompt de Saludo</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {editFormData.greeting_prompt?.length || 0} caracteres
+                    </span>
+                  </div>
                   <Textarea
                     value={editFormData.greeting_prompt}
                     onChange={(e) => setEditFormData({ ...editFormData, greeting_prompt: e.target.value })}
                     placeholder="¿Cómo debe saludar el agente?"
-                    rows={2}
+                    className="min-h-[80px] max-h-[200px] resize-y font-mono text-sm"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Prompt de Cierre</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Prompt de Cierre</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {editFormData.closing_prompt?.length || 0} caracteres
+                    </span>
+                  </div>
                   <Textarea
                     value={editFormData.closing_prompt}
                     onChange={(e) => setEditFormData({ ...editFormData, closing_prompt: e.target.value })}
                     placeholder="¿Cómo debe despedirse el agente?"
-                    rows={2}
+                    className="min-h-[80px] max-h-[200px] resize-y font-mono text-sm"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Instrucciones de Contexto</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Instrucciones de Contexto</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {editFormData.context_instructions?.length || 0} caracteres
+                    </span>
+                  </div>
                   <Textarea
                     value={editFormData.context_instructions}
                     onChange={(e) => setEditFormData({ ...editFormData, context_instructions: e.target.value })}
                     placeholder="Instrucciones adicionales sobre el contexto de la conversación..."
-                    rows={3}
+                    className="min-h-[100px] max-h-[250px] resize-y font-mono text-sm"
                   />
                 </div>
               </div>
-              <DialogFooter>
+              <DialogFooter className="flex-shrink-0 bg-background pt-6 pb-2 border-t">
                 <Button
                   variant="outline"
                   onClick={() => {

@@ -17,7 +17,7 @@ export interface Employee {
 }
 
 export interface CreateEmployeeData {
-  employee_id?: string
+  employee_id: string
   name: string
   section_id: string
   job_id: string

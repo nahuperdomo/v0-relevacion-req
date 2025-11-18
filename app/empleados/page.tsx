@@ -95,7 +95,7 @@ export default function EmpleadosPage() {
       ])
 
       setEmployees(employeesData.employees)
-      setSections(sectionsData)
+      setSections(Array.isArray(sectionsData) ? sectionsData : [])
       setAgents(agentsData.agents)
     } catch (error) {
       console.error("[v0] Error cargando datos:", error)
@@ -120,10 +120,14 @@ export default function EmpleadosPage() {
         return
       }
 
+      // Generar un ID único para el empleado
+      const employeeId = `emp-${employeeFormData.name.toLowerCase().replace(/\s+/g, '-').substring(0, 10)}-${Date.now().toString(36)}`
+
       const data: CreateEmployeeData = {
+        employee_id: employeeId,
         name: employeeFormData.name,
         section_id: employeeFormData.section_id,
-        job_id: employeeFormData.job_id || "",
+        job_id: employeeFormData.job_id || `job-${Date.now().toString(36)}`,
         contact_info: {
           whatsapp_number: employeeFormData.whatsapp_number,
           email: employeeFormData.email,
@@ -174,7 +178,7 @@ export default function EmpleadosPage() {
       }
 
       const updated = await employeesApi.update(selectedEmployee.employee_id, data)
-      setEmployees(employees.map((e) => (e.employee_id === selectedEmployee.employee_id ? updated : e)))
+      setEmployees((employees || []).map((e) => (e.employee_id === selectedEmployee.employee_id ? updated : e)))
       setIsEditEmployeeDialogOpen(false)
       setSelectedEmployee(null)
 
@@ -194,7 +198,7 @@ export default function EmpleadosPage() {
 
   const handleCreateSection = async () => {
     try {
-      if (!sectionFormData.name || !sectionFormData.agent_id) {
+      if (!sectionFormData.name) {
         toast({
           title: "Error de validación",
           description: "Por favor completa todos los campos requeridos",
@@ -205,7 +209,6 @@ export default function EmpleadosPage() {
 
       const data: CreateSectionData = {
         name: sectionFormData.name,
-        agent_id: sectionFormData.agent_id,
         admin_id: sectionFormData.admin_id,
         interviews_configured: [],
       }
@@ -241,11 +244,10 @@ export default function EmpleadosPage() {
     try {
       const data: Partial<CreateSectionData> = {
         name: editSectionFormData.name,
-        agent_id: editSectionFormData.agent_id,
       }
 
       const updated = await sectionsApi.update(selectedSection.section_id, data)
-      setSections(sections.map((s) => (s.section_id === selectedSection.section_id ? updated : s)))
+      setSections(Array.isArray(sections) ? sections.map((s) => (s.section_id === selectedSection.section_id ? updated : s)) : [updated])
       setIsEditSectionDialogOpen(false)
       setSelectedSection(null)
 
@@ -266,7 +268,7 @@ export default function EmpleadosPage() {
   const handleDeleteEmployee = async (id: string) => {
     try {
       await employeesApi.delete(id)
-      setEmployees(employees.filter((e) => e.employee_id !== id))
+      setEmployees((employees || []).filter((e) => e.employee_id !== id))
       toast({
         title: "Empleado eliminado",
         description: "El empleado ha sido dado de baja",
@@ -284,7 +286,7 @@ export default function EmpleadosPage() {
   const handleDeleteSection = async (id: string) => {
     try {
       await sectionsApi.delete(id)
-      setSections(sections.filter((s) => s.section_id !== id))
+      setSections(Array.isArray(sections) ? sections.filter((s) => s.section_id !== id) : [])
       toast({
         title: "Sección eliminada",
         description: "La sección ha sido eliminada",
@@ -299,16 +301,16 @@ export default function EmpleadosPage() {
     }
   }
 
-  const filteredEmployees = employees.filter(
+  const filteredEmployees = (employees || []).filter(
     (employee) =>
       employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       employee.section_id.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
-  const filteredSections = sections.filter((section) => section.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredSections = Array.isArray(sections) ? sections.filter((section) => section.name.toLowerCase().includes(searchQuery.toLowerCase())) : []
 
   const getSectionName = (sectionId: string) => {
-    return sections.find((s) => s.section_id === sectionId)?.name || sectionId
+    return Array.isArray(sections) ? sections.find((s) => s.section_id === sectionId)?.name || sectionId : sectionId
   }
 
   return (
@@ -378,7 +380,7 @@ export default function EmpleadosPage() {
                           <SelectValue placeholder="Selecciona una sección" />
                         </SelectTrigger>
                         <SelectContent>
-                          {sections.map((section) => (
+                          {(sections || []).map((section) => (
                             <SelectItem key={section.section_id} value={section.section_id}>
                               {section.name}
                             </SelectItem>
@@ -425,7 +427,7 @@ export default function EmpleadosPage() {
                   <CardTitle className="text-sm font-medium text-muted-foreground">Total Empleados</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{employees.length}</div>
+                  <div className="text-3xl font-bold">{(employees || []).length}</div>
                 </CardContent>
               </Card>
 
@@ -435,7 +437,7 @@ export default function EmpleadosPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-emerald-400">
-                    {employees.filter((e) => e.status === "ACTIVE").length}
+                    {(employees || []).filter((e) => e.status === "ACTIVE").length}
                   </div>
                 </CardContent>
               </Card>
@@ -446,7 +448,7 @@ export default function EmpleadosPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-violet-400">
-                    {employees.filter((e) => e.interviews_assigned.length > 0).length}
+                    {(employees || []).filter((e) => e.interviews_assigned.length > 0).length}
                   </div>
                 </CardContent>
               </Card>
@@ -456,7 +458,7 @@ export default function EmpleadosPage() {
                   <CardTitle>Secciones</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{sections.length}</div>
+                  <div className="text-3xl font-bold">{Array.isArray(sections) ? sections.length : 0}</div>
                 </CardContent>
               </Card>
             </div>
@@ -584,7 +586,7 @@ export default function EmpleadosPage() {
                           <SelectValue placeholder="Selecciona un agente" />
                         </SelectTrigger>
                         <SelectContent>
-                          {agents.map((agent) => (
+                          {(agents || []).map((agent) => (
                             <SelectItem key={agent.agent_id} value={agent.agent_id}>
                               {agent.name}
                             </SelectItem>
@@ -623,13 +625,15 @@ export default function EmpleadosPage() {
                     <CardContent className="space-y-4">
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Agente:</span>
-                          <span className="font-medium">{section.agent_id}</span>
+                          <span className="text-muted-foreground">Agentes Asignados:</span>
+                          <span className="font-medium">
+                            {(agents || []).filter((a) => a.section_id === section.section_id).length}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Empleados:</span>
                           <span className="font-medium text-emerald-400">
-                            {employees.filter((e) => e.section_id === section.section_id).length}
+                            {(employees || []).filter((e) => e.section_id === section.section_id).length}
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -647,7 +651,7 @@ export default function EmpleadosPage() {
                             setSelectedSection(section)
                             setEditSectionFormData({
                               name: section.name,
-                              agent_id: section.agent_id,
+                              agent_id: "",
                             })
                             setIsEditSectionDialogOpen(true)
                           }}
@@ -699,7 +703,7 @@ export default function EmpleadosPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {sections.map((section) => (
+                      {(sections || []).map((section) => (
                         <SelectItem key={section.section_id} value={section.section_id}>
                           {section.name}
                         </SelectItem>
@@ -774,7 +778,7 @@ export default function EmpleadosPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {agents.map((agent) => (
+                      {(agents || []).map((agent) => (
                         <SelectItem key={agent.agent_id} value={agent.agent_id}>
                           {agent.name}
                         </SelectItem>

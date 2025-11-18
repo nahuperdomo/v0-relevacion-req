@@ -5,17 +5,19 @@ export interface Interview {
   title: string
   description: string
   section_id: string
+  section_name?: string
   agent_id: string
   topics: string[]
   duration_minutes: number
   type: "INDIVIDUAL" | "GROUP" | "FOLLOW_UP"
-  status: "DRAFT" | "PENDING" | "IN_PROGRESS" | "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED" | "ARCHIVED"
+  status: "DRAFT" | "ACTIVE" | "ARCHIVED"
   target_employees: string[]
-  responses_count: number
-  completion_percentage: number
   created_at: string
   updated_at: string
-  started_at?: string
+  interview_context?: string
+  objectives?: string[]
+  conversations_completed?: number
+  conversations_total?: number
   schedule?: {
     start_date: string
     end_date: string
@@ -31,11 +33,30 @@ export interface CreateInterviewData {
   description: string
   section_id: string
   agent_id: string
-  topics: string[]
   duration_minutes: number
-  type: "INDIVIDUAL" | "GROUP" | "FOLLOW_UP"
-  target_employees: string[]
+  objectives?: string[]
+  type?: "INDIVIDUAL" | "GROUP" | "FOLLOW_UP"
+  target_employees?: string[]
   schedule: {
+    start_date: string
+    end_date: string
+    allowed_days: string[]
+    start_time: string
+    end_time: string
+  }
+}
+
+export interface UpdateInterviewData {
+  title?: string
+  description?: string
+  section_id?: string
+  agent_id?: string
+  duration_minutes?: number
+  objectives?: string[]
+  type?: "INDIVIDUAL" | "GROUP" | "FOLLOW_UP"
+  target_employees?: string[]
+  status?: "DRAFT" | "ACTIVE" | "ARCHIVED"
+  schedule?: {
     start_date: string
     end_date: string
     allowed_days: string[]
@@ -93,35 +114,10 @@ export const interviewsApi = {
     })
   },
 
-  update: async (id: string, data: Partial<CreateInterviewData>): Promise<Interview> => {
+  update: async (id: string, data: UpdateInterviewData): Promise<Interview> => {
     return fetchApi(`/interviews/${id}`, {
       method: "PATCH",
       body: JSON.stringify(data),
-    })
-  },
-
-  start: async (id: string, data?: { start_date?: string; specific_employees?: string[] }): Promise<Interview> => {
-    return fetchApi(`/interviews/${id}/start`, {
-      method: "POST",
-      body: JSON.stringify(data || {}),
-    })
-  },
-
-  pause: async (id: string): Promise<Interview> => {
-    return fetchApi(`/interviews/${id}/pause`, {
-      method: "POST",
-    })
-  },
-
-  resume: async (id: string): Promise<Interview> => {
-    return fetchApi(`/interviews/${id}/resume`, {
-      method: "POST",
-    })
-  },
-
-  complete: async (id: string): Promise<Interview> => {
-    return fetchApi(`/interviews/${id}/complete`, {
-      method: "POST",
     })
   },
 
@@ -139,81 +135,5 @@ export const interviewsApi = {
 
   getBySection: async (sectionId: string): Promise<Interview[]> => {
     return fetchApi(`/interviews/section/${sectionId}`)
-  },
-
-  executeForEmployees: async (data: {
-    interview_id: string
-    employee_ids: string[]
-    start_immediately?: boolean
-    scheduled_start?: string
-  }): Promise<{
-    execution_id: string
-    interview_id: string
-    employees_count: number
-    status: string
-    initiated_at: string
-  }> => {
-    return fetchApi("/interviews/execute/employees", {
-      method: "POST",
-      body: JSON.stringify(data),
-    })
-  },
-
-  executeForSection: async (data: {
-    interview_id: string
-    section_id: string
-    exclude_employees?: string[]
-    start_immediately?: boolean
-    scheduled_start?: string
-  }): Promise<{
-    execution_id: string
-    interview_id: string
-    section_id: string
-    employees_count: number
-    status: string
-    initiated_at: string
-  }> => {
-    return fetchApi("/interviews/execute/section", {
-      method: "POST",
-      body: JSON.stringify(data),
-    })
-  },
-
-  getExecutionStatus: async (
-    executionId: string,
-  ): Promise<{
-    execution_id: string
-    status: string
-    progress: {
-      total: number
-      sent: number
-      pending: number
-      failed: number
-    }
-    started_at: string
-    completed_at?: string
-  }> => {
-    return fetchApi(`/interviews/execution/${executionId}/status`)
-  },
-
-  getExecutionConversations: async (executionId: string): Promise<any[]> => {
-    return fetchApi(`/interviews/execution/${executionId}/conversations`)
-  },
-
-  stopExecution: async (
-    executionId: string,
-  ): Promise<{
-    execution_id: string
-    status: string
-    stopped_at: string
-    message: string
-  }> => {
-    return fetchApi(`/interviews/execution/${executionId}/stop`, {
-      method: "POST",
-    })
-  },
-
-  getActiveExecutions: async (): Promise<any[]> => {
-    return fetchApi("/interviews/executions/active")
   },
 }

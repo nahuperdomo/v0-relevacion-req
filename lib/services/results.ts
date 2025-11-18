@@ -3,7 +3,9 @@ import { fetchApi } from "../api-config"
 export interface Result {
   id: string
   interviewId: string
+  interviewTitle?: string
   employeeId: string
+  employeeName?: string
   sectionId: string
   summary: string
   topicsDetected: string[]

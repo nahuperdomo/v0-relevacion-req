@@ -5,30 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { interviewsApi } from "@/lib/services/interviews"
-import { RefreshCw, StopCircle, Eye, CheckCircle, AlertCircle, Clock } from "lucide-react"
-
-interface ExecutionSummary {
-  execution_id: string
-  interview_title: string
-  section_id: string
-  section_name: string
-  conversations: any[]
-  statistics: {
-    total_targeted: number
-    completed_successfully: number
-    failed_conversations: number
-    completion_rate: number
-    avg_conversation_duration: number
-    total_messages_exchanged: number
-  }
-  started_at: Date
-  duration_minutes: number
-  detected_topics: string[]
-}
+import { executionsService, type InterviewExecution } from "@/lib/services/executions"
+import { RefreshCw, StopCircle, Eye, CheckCircle, AlertCircle, Clock, Pause, Play } from "lucide-react"
 
 export function ActiveExecutions() {
-  const [executions, setExecutions] = useState<ExecutionSummary[]>([])
+  const [executions, setExecutions] = useState<InterviewExecution[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -42,19 +23,38 @@ export function ActiveExecutions() {
   const loadExecutions = async () => {
     try {
       setRefreshing(true)
-      const data = await interviewsApi.getActiveExecutions()
-      setExecutions(data)
+      const data = await executionsService.getActive()
+      setExecutions(Array.isArray(data) ? data : [])
     } catch (error) {
-      console.error("Error cargando ejecuciones:", error)
+      console.error("Error cargando ejecuciones activas:", error)
+      setExecutions([])
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
   }
 
+  const handlePauseExecution = async (executionId: string) => {
+    try {
+      await executionsService.pause(executionId)
+      await loadExecutions()
+    } catch (error) {
+      console.error("Error pausando ejecución:", error)
+    }
+  }
+
+  const handleResumeExecution = async (executionId: string) => {
+    try {
+      await executionsService.resume(executionId)
+      await loadExecutions()
+    } catch (error) {
+      console.error("Error reanudando ejecución:", error)
+    }
+  }
+
   const handleStopExecution = async (executionId: string) => {
     try {
-      await interviewsApi.stopExecution(executionId)
+      await executionsService.stop(executionId)
       await loadExecutions()
     } catch (error) {
       console.error("Error deteniendo ejecución:", error)
@@ -77,7 +77,7 @@ export function ActiveExecutions() {
     )
   }
 
-  if (executions.length === 0) {
+  if (!executions || executions.length === 0) {
     return (
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -111,8 +111,11 @@ export function ActiveExecutions() {
       </CardHeader>
       <CardContent className="space-y-4">
         {executions.map((execution) => {
-          const completionRate = 
-            (execution.statistics.completed_successfully / execution.statistics.total_targeted) * 100 || 0
+          const statusColor = execution.status === 'IN_PROGRESS' 
+            ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+            : 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+          
+          const statusLabel = execution.status === 'IN_PROGRESS' ? 'En Progreso' : 'Pausada';
 
           return (
             <div
@@ -122,13 +125,18 @@ export function ActiveExecutions() {
               {/* Header */}
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1 flex-1">
-                  <div className="font-medium">{execution.interview_title}</div>
+                  <div className="font-medium">Entrevista: {execution.interview_id}</div>
                   <div className="text-sm text-muted-foreground">
-                    {execution.section_name} • ID: {execution.execution_id}
+                    ID Ejecución: {execution.execution_id}
                   </div>
+                  {execution.started_at && (
+                    <div className="text-xs text-muted-foreground">
+                      Iniciada: {new Date(execution.started_at).toLocaleString('es-ES')}
+                    </div>
+                  )}
                 </div>
-                <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
-                  En Progreso
+                <Badge variant="outline" className={statusColor}>
+                  {statusLabel}
                 </Badge>
               </div>
 
@@ -136,16 +144,16 @@ export function ActiveExecutions() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Progreso</span>
-                  <span className="font-medium">{completionRate.toFixed(0)}%</span>
+                  <span className="font-medium">{Number(execution.completion_percentage).toFixed(0)}%</span>
                 </div>
-                <Progress value={completionRate} className="h-2" />
+                <Progress value={Number(execution.completion_percentage)} className="h-2" />
               </div>
 
               {/* Statistics */}
               <div className="grid grid-cols-3 gap-3 text-sm">
                 <div className="space-y-1">
                   <div className="text-muted-foreground">Total</div>
-                  <div className="font-medium">{execution.statistics.total_targeted}</div>
+                  <div className="font-medium">{execution.conversations_total}</div>
                 </div>
                 <div className="space-y-1">
                   <div className="text-muted-foreground flex items-center gap-1">
@@ -153,19 +161,38 @@ export function ActiveExecutions() {
                     Completadas
                   </div>
                   <div className="font-medium text-green-400">
-                    {execution.statistics.completed_successfully}
+                    {execution.conversations_completed}
                   </div>
                 </div>
                 <div className="space-y-1">
                   <div className="text-muted-foreground flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3 text-red-500" />
-                    Fallidas
+                    <Clock className="h-3 w-3 text-amber-500" />
+                    Pendientes
                   </div>
-                  <div className="font-medium text-red-400">
-                    {execution.statistics.failed_conversations}
+                  <div className="font-medium text-amber-400">
+                    {execution.conversations_total - execution.conversations_completed}
                   </div>
                 </div>
               </div>
+
+              {/* Topics */}
+              {execution.consolidated_topics && execution.consolidated_topics.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">Temas detectados:</div>
+                  <div className="flex flex-wrap gap-1">
+                    {execution.consolidated_topics.slice(0, 3).map((topic, idx) => (
+                      <Badge key={idx} variant="secondary" className="text-xs">
+                        {topic}
+                      </Badge>
+                    ))}
+                    {execution.consolidated_topics.length > 3 && (
+                      <Badge variant="secondary" className="text-xs">
+                        +{execution.consolidated_topics.length - 3} más
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Actions */}
               <div className="flex items-center gap-2 pt-2 border-t">
@@ -178,6 +205,27 @@ export function ActiveExecutions() {
                   <Eye className="h-3.5 w-3.5 mr-1.5" />
                   Ver Detalles
                 </Button>
+                
+                {execution.status === 'IN_PROGRESS' ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePauseExecution(execution.execution_id)}
+                  >
+                    <Pause className="h-3.5 w-3.5 mr-1.5" />
+                    Pausar
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleResumeExecution(execution.execution_id)}
+                  >
+                    <Play className="h-3.5 w-3.5 mr-1.5" />
+                    Reanudar
+                  </Button>
+                )}
+
                 <Button
                   variant="destructive"
                   size="sm"

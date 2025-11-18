@@ -30,12 +30,12 @@ export interface Agent {
 }
 
 export interface CreateAgentData {
-  agent_id?: string
+  agent_id: string
   name: string
   description: string
   tone: "FORMAL" | "CASUAL" | "FRIENDLY" | "PROFESSIONAL" | "EMPATHETIC"
   embedding_profile: string
-  section_id: string
+  section_id?: string
   prompt_config: {
     system_prompt: string
     greeting_prompt: string

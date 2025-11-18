@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { SidebarNav } from "@/components/sidebar-nav"
+import { ErrorAlertProvider } from "@/components/error-alert"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -39,11 +40,13 @@ export default function RootLayout({
   return (
     <html lang="es" className="dark">
       <body className={`font-sans antialiased`}>
-        <div className="flex h-screen bg-background">
-          <SidebarNav />
-          <div className="flex-1 flex flex-col overflow-hidden">{children}</div>
-        </div>
-        <Analytics />
+        <ErrorAlertProvider>
+          <div className="flex h-screen bg-background">
+            <SidebarNav />
+            <div className="flex-1 flex flex-col overflow-hidden">{children}</div>
+          </div>
+          <Analytics />
+        </ErrorAlertProvider>
       </body>
     </html>
   )

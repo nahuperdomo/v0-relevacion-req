@@ -3,7 +3,6 @@ import { fetchApi } from "../api-config"
 export interface Section {
   section_id: string
   name: string
-  agent_id: string
   interviews_configured: string[]
   created_at: string
   status: "ACTIVE" | "INACTIVE"
@@ -12,7 +11,6 @@ export interface Section {
 export interface CreateSectionData {
   section_id?: string
   name: string
-  agent_id: string
   interviews_configured?: string[]
   admin_id: string
 }
