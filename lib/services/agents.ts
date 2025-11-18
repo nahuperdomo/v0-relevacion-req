@@ -110,6 +110,7 @@ export const agentsApi = {
   delete: async (id: string): Promise<void> => {
     return fetchApi(`/agents/${id}`, {
       method: "DELETE",
+      skipAutoAlert: true, // No mostrar alert automático, lo manejamos en el componente
     })
   },
 
@@ -149,5 +150,36 @@ export const agentsApi = {
 
   getBySection: async (sectionId: string): Promise<Agent[]> => {
     return fetchApi(`/agents/section/${sectionId}`)
+  },
+
+  // Métodos para gestión de entrevistas vinculadas
+  getInterviewsByAgent: async (agentId: string): Promise<any[]> => {
+    try {
+      const result = await fetchApi(`/interviews?agent_id=${agentId}`, {
+        skipAutoAlert: true, // No mostrar alert automático
+      })
+      // Asegurarse de devolver siempre un array
+      if (Array.isArray(result)) {
+        return result
+      }
+      if (result && typeof result === 'object' && 'interviews' in result) {
+        return (result as any).interviews || []
+      }
+      return []
+    } catch (error) {
+      // Si falla la consulta, lanzar el error para que el componente lo maneje
+      throw error
+    }
+  },
+
+  unassignInterview: async (interviewId: string, newAgentId?: string): Promise<any> => {
+    const updateData = newAgentId 
+      ? { agent_id: newAgentId }
+      : { agent_id: null } // Desvincular completamente si no se especifica nuevo agente
+    
+    return fetchApi(`/interviews/${interviewId}`, {
+      method: "PATCH",
+      body: JSON.stringify(updateData),
+    })
   },
 }

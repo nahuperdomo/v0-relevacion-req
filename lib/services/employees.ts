@@ -3,7 +3,7 @@ import { fetchApi } from "../api-config"
 export interface Employee {
   employee_id: string
   name: string
-  section_id: string
+  section_id: string | null
   job_id: string
   contact_info: {
     whatsapp_number: string
@@ -19,7 +19,7 @@ export interface Employee {
 export interface CreateEmployeeData {
   employee_id: string
   name: string
-  section_id: string
+  section_id?: string | null
   job_id: string
   contact_info: {
     whatsapp_number: string
@@ -86,6 +86,13 @@ export const employeesApi = {
   assignInterview: async (id: string, interviewId: string): Promise<Employee> => {
     return fetchApi(`/employees/${id}/assign-interview`, {
       method: "POST",
+      body: JSON.stringify({ interview_id: interviewId }),
+    })
+  },
+
+  unassignInterview: async (id: string, interviewId: string): Promise<{ message: string }> => {
+    return fetchApi(`/employees/${id}/unassign-interview`, {
+      method: "DELETE",
       body: JSON.stringify({ interview_id: interviewId }),
     })
   },

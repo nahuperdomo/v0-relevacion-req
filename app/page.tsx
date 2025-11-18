@@ -153,7 +153,6 @@ export default function DashboardPage() {
             value={loading ? "-" : stats.interviews?.active_interviews || 0}
             description="En progreso"
             icon={MessageSquare}
-            trend={{ value: 8.2, isPositive: true }}
           />
           <StatsCard
             title="Empleados Totales"
@@ -166,14 +165,12 @@ export default function DashboardPage() {
             value={loading ? "-" : stats.agents?.active_agents || 0}
             description="Configurados y activos"
             icon={Bot}
-            trend={{ value: 12.5, isPositive: true }}
           />
           <StatsCard
             title="Total Respuestas"
             value={loading ? "-" : stats.interviews?.total_responses || 0}
             description="Recolectadas"
             icon={TrendingUp}
-            trend={{ value: 3.1, isPositive: true }}
           />
         </div>
 
@@ -328,13 +325,12 @@ export default function DashboardPage() {
                 <div className="group relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-blue-500/5 to-transparent p-6 hover:border-blue-500/30 transition-all">
                   <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/5 rounded-full blur-2xl -mr-10 -mt-10" />
                   <div className="relative space-y-4">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2.5 rounded-lg bg-blue-500/10 flex-shrink-0">
+                    <div className="flex items-center justify-center">
+                      <div className="p-2.5 rounded-lg bg-blue-500/10">
                         <Users className="h-5 w-5 text-blue-400" />
                       </div>
-                      <span className="text-xs font-medium text-muted-foreground leading-tight">Total Empleados</span>
                     </div>
-                    <div className="text-4xl font-bold text-blue-400">
+                    <div className="text-4xl font-bold text-blue-400 text-center">
                       {selectedInterviewDetails?.conversations_total || 0}
                     </div>
                   </div>
@@ -343,13 +339,12 @@ export default function DashboardPage() {
                 <div className="group relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-emerald-500/5 to-transparent p-6 hover:border-emerald-500/30 transition-all">
                   <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-500/5 rounded-full blur-2xl -mr-10 -mt-10" />
                   <div className="relative space-y-4">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2.5 rounded-lg bg-emerald-500/10 flex-shrink-0">
+                    <div className="flex items-center justify-center">
+                      <div className="p-2.5 rounded-lg bg-emerald-500/10">
                         <CheckCircle2 className="h-5 w-5 text-emerald-400" />
                       </div>
-                      <span className="text-xs font-medium text-muted-foreground leading-tight">Completadas</span>
                     </div>
-                    <div className="text-4xl font-bold text-emerald-400">
+                    <div className="text-4xl font-bold text-emerald-400 text-center">
                       {selectedInterviewDetails?.conversations_completed || 0}
                     </div>
                   </div>
@@ -358,13 +353,12 @@ export default function DashboardPage() {
                 <div className="group relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-violet-500/5 to-transparent p-6 hover:border-violet-500/30 transition-all">
                   <div className="absolute top-0 right-0 w-20 h-20 bg-violet-500/5 rounded-full blur-2xl -mr-10 -mt-10" />
                   <div className="relative space-y-4">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2.5 rounded-lg bg-violet-500/10 flex-shrink-0">
+                    <div className="flex items-center justify-center">
+                      <div className="p-2.5 rounded-lg bg-violet-500/10">
                         <Clock className="h-5 w-5 text-violet-400" />
                       </div>
-                      <span className="text-xs font-medium text-muted-foreground leading-tight">Duración</span>
                     </div>
-                    <div className="text-4xl font-bold text-violet-400">
+                    <div className="text-4xl font-bold text-violet-400 text-center">
                       {selectedInterviewDetails?.duration_minutes || 0}
                       <span className="text-sm font-normal text-muted-foreground ml-1">min</span>
                     </div>
@@ -374,13 +368,12 @@ export default function DashboardPage() {
                 <div className="group relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-amber-500/5 to-transparent p-6 hover:border-amber-500/30 transition-all">
                   <div className="absolute top-0 right-0 w-20 h-20 bg-amber-500/5 rounded-full blur-2xl -mr-10 -mt-10" />
                   <div className="relative space-y-4">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2.5 rounded-lg bg-amber-500/10 flex-shrink-0">
+                    <div className="flex items-center justify-center">
+                      <div className="p-2.5 rounded-lg bg-amber-500/10">
                         <BarChart3 className="h-5 w-5 text-amber-400" />
                       </div>
-                      <span className="text-xs font-medium text-muted-foreground leading-tight">Resultados</span>
                     </div>
-                    <div className="text-4xl font-bold text-amber-400">
+                    <div className="text-4xl font-bold text-amber-400 text-center">
                       {interviewResults.length}
                     </div>
                   </div>

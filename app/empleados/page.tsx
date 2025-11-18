@@ -54,7 +54,13 @@ export default function EmpleadosPage() {
   const { toast } = useToast()
 
   // Form states
-  const [employeeFormData, setEmployeeFormData] = useState({
+  const [employeeFormData, setEmployeeFormData] = useState<{
+    name: string
+    section_id: string | null
+    job_id: string
+    whatsapp_number: string
+    email: string
+  }>({
     name: "",
     section_id: "",
     job_id: "",
@@ -68,7 +74,13 @@ export default function EmpleadosPage() {
     admin_id: typeof window !== "undefined" ? localStorage.getItem("admin_id") || "admin-default" : "admin-default",
   })
 
-  const [editEmployeeFormData, setEditEmployeeFormData] = useState({
+  const [editEmployeeFormData, setEditEmployeeFormData] = useState<{
+    name: string
+    section_id: string | null
+    job_id: string
+    whatsapp_number: string
+    email: string
+  }>({
     name: "",
     section_id: "",
     job_id: "",
@@ -126,7 +138,7 @@ export default function EmpleadosPage() {
       const data: CreateEmployeeData = {
         employee_id: employeeId,
         name: employeeFormData.name,
-        section_id: employeeFormData.section_id,
+        section_id: employeeFormData.section_id || null,
         job_id: employeeFormData.job_id || `job-${Date.now().toString(36)}`,
         contact_info: {
           whatsapp_number: employeeFormData.whatsapp_number,
@@ -169,7 +181,7 @@ export default function EmpleadosPage() {
     try {
       const data: Partial<CreateEmployeeData> = {
         name: editEmployeeFormData.name,
-        section_id: editEmployeeFormData.section_id,
+        section_id: editEmployeeFormData.section_id || null,
         job_id: editEmployeeFormData.job_id,
         contact_info: {
           whatsapp_number: editEmployeeFormData.whatsapp_number,
@@ -304,12 +316,13 @@ export default function EmpleadosPage() {
   const filteredEmployees = (employees || []).filter(
     (employee) =>
       employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      employee.section_id.toLowerCase().includes(searchQuery.toLowerCase()),
+      (employee.section_id && employee.section_id.toLowerCase().includes(searchQuery.toLowerCase())),
   )
 
   const filteredSections = Array.isArray(sections) ? sections.filter((section) => section.name.toLowerCase().includes(searchQuery.toLowerCase())) : []
 
-  const getSectionName = (sectionId: string) => {
+  const getSectionName = (sectionId: string | null) => {
+    if (!sectionId) return "Sin sección"
     return Array.isArray(sections) ? sections.find((s) => s.section_id === sectionId)?.name || sectionId : sectionId
   }
 
@@ -373,13 +386,14 @@ export default function EmpleadosPage() {
                     <div className="space-y-2">
                       <Label htmlFor="employee-section">Sección</Label>
                       <Select
-                        value={employeeFormData.section_id}
-                        onValueChange={(value) => setEmployeeFormData({ ...employeeFormData, section_id: value })}
+                        value={employeeFormData.section_id || "null"}
+                        onValueChange={(value) => setEmployeeFormData({ ...employeeFormData, section_id: value === "null" ? null : value })}
                       >
                         <SelectTrigger id="employee-section">
                           <SelectValue placeholder="Selecciona una sección" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="null">Sin sección</SelectItem>
                           {(sections || []).map((section) => (
                             <SelectItem key={section.section_id} value={section.section_id}>
                               {section.name}
@@ -696,13 +710,14 @@ export default function EmpleadosPage() {
                 <div className="space-y-2">
                   <Label htmlFor="edit-employee-section">Sección</Label>
                   <Select
-                    value={editEmployeeFormData.section_id}
-                    onValueChange={(value) => setEditEmployeeFormData({ ...editEmployeeFormData, section_id: value })}
+                    value={editEmployeeFormData.section_id || "null"}
+                    onValueChange={(value) => setEditEmployeeFormData({ ...editEmployeeFormData, section_id: value === "null" ? null : value })}
                   >
                     <SelectTrigger id="edit-employee-section">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="null">Sin sección</SelectItem>
                       {(sections || []).map((section) => (
                         <SelectItem key={section.section_id} value={section.section_id}>
                           {section.name}

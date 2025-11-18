@@ -34,6 +34,8 @@ function formatErrorMessage(error: any, statusCode: number): string {
     const errorMappings: Record<string, string> = {
       // Agentes
       'Cannot delete agent with active interviews': '❌ No se puede eliminar el agente porque tiene entrevistas activas.\n\n💡 Por favor, reasigna las entrevistas primero.',
+      'violates foreign key constraint': '❌ No se puede eliminar este agente porque tiene entrevistas vinculadas.\n\n💡 Por favor, reasigna o elimina las entrevistas vinculadas primero.',
+      'ai_agents': '❌ No se puede eliminar este agente porque tiene entrevistas vinculadas.\n\n💡 Por favor, reasigna o elimina las entrevistas vinculadas primero.',
       'Agent not found': '❌ El agente no fue encontrado',
       'Agent with this ID already exists': '❌ Ya existe un agente con ese ID',
       
@@ -101,13 +103,17 @@ function formatErrorMessage(error: any, statusCode: number): string {
   return statusMessages[statusCode] || `❌ Error ${statusCode}: ${error.message || 'Error desconocido'}`
 }
 
-export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+export async function fetchApi<T>(
+  endpoint: string, 
+  options: RequestInit & { skipAutoAlert?: boolean } = {}
+): Promise<T> {
   const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
+  const { skipAutoAlert, ...fetchOptions } = options
 
   const headers = {
     ...apiConfig.headers,
     ...(token && { Authorization: `Bearer ${token}` }),
-    ...options.headers,
+    ...fetchOptions.headers,
   }
 
   const controller = new AbortController()
@@ -115,7 +121,7 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
 
   try {
     const response = await fetch(`${apiConfig.baseUrl}${endpoint}`, {
-      ...options,
+      ...fetchOptions,
       headers,
       signal: controller.signal,
     })
@@ -135,8 +141,8 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
         error
       )
       
-      // Mostrar el error automáticamente en un alert
-      if (typeof window !== "undefined") {
+      // Mostrar el error automáticamente en un alert (a menos que se solicite omitirlo)
+      if (!skipAutoAlert && typeof window !== "undefined") {
         // Importación dinámica para evitar problemas de SSR
         import("@/components/error-alert").then(({ showErrorAlert }) => {
           showErrorAlert(friendlyMessage, "Error")
@@ -180,8 +186,8 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
       )
     }
     
-    // Mostrar el error automáticamente en un alert
-    if (typeof window !== "undefined") {
+    // Mostrar el error automáticamente en un alert (a menos que se solicite omitirlo)
+    if (!skipAutoAlert && typeof window !== "undefined") {
       import("@/components/error-alert").then(({ showErrorAlert }) => {
         showErrorAlert(apiError.message, "Error")
       })
