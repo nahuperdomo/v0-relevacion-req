@@ -7,6 +7,7 @@ export interface Interview {
   section_id: string
   section_name?: string
   agent_id: string
+  agent_name?: string
   topics: string[]
   duration_minutes: number
   type: "INDIVIDUAL" | "GROUP" | "FOLLOW_UP"

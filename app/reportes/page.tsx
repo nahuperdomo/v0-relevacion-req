@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Eye, Download, TrendingUp, AlertCircle, CheckCircle2, Clock, BarChart3, FileText, Users, MessageSquare, Target, ChevronLeft, ChevronRight } from "lucide-react"
+import { generateConsolidatedReportPDF, generateIndividualReportPDF } from "@/lib/utils/pdf-generator"
 
 type Sentiment = "positive" | "neutral" | "negative"
 
@@ -80,9 +81,9 @@ export default function ReportesPage() {
 
       const allResults = Array.isArray(resultsData?.data) ? resultsData.data : []
       
-      // Separar resultados consolidados (employee_id = 'CONSOLIDATED') de individuales
-      const consolidated = allResults.filter(r => r.employeeId === 'CONSOLIDATED')
-      const individual = allResults.filter(r => r.employeeId !== 'CONSOLIDATED')
+      // Separar resultados consolidados (employee_id = null) de individuales
+      const consolidated = allResults.filter(r => r.employeeId === null || r.employeeId === 'CONSOLIDATED')
+      const individual = allResults.filter(r => r.employeeId !== null && r.employeeId !== 'CONSOLIDATED')
       
       console.log('[REPORTES] Consolidated results:', consolidated.length)
       console.log('[REPORTES] Individual results:', individual.length)
@@ -743,15 +744,57 @@ export default function ReportesPage() {
         {/* Dialog para detalle de resultado individual */}
         {selectedResult && (
           <Dialog open={!!selectedResult} onOpenChange={() => setSelectedResult(null)}>
-            <DialogContent className="max-w-3xl">
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Detalle del Resultado</DialogTitle>
-                <DialogDescription>Análisis completo de la entrevista</DialogDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <DialogTitle>Detalle del Resultado</DialogTitle>
+                    <DialogDescription>Análisis completo de la entrevista</DialogDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        // Verificar si es consolidado o individual
+                        const isConsolidated = selectedResult.employeeId === null || selectedResult.employeeId === 'CONSOLIDATED'
+                        
+                        if (isConsolidated) {
+                          const interview = interviews.find(int => int.interview_id === selectedResult.interviewId)
+                          const individualCount = results.filter(r => r.interviewId === selectedResult.interviewId).length
+                          await generateConsolidatedReportPDF(
+                            selectedResult,
+                            interview?.title || selectedResult.interviewTitle || selectedResult.interviewId,
+                            individualCount
+                          )
+                        } else {
+                          await generateIndividualReportPDF(selectedResult)
+                        }
+                        
+                        toast({
+                          title: "PDF Generado",
+                          description: "El reporte se ha descargado exitosamente",
+                        })
+                      } catch (error) {
+                        console.error("Error generando PDF:", error)
+                        toast({
+                          title: "Error",
+                          description: "No se pudo generar el PDF",
+                          variant: "destructive",
+                        })
+                      }
+                    }}
+                    className="gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Descargar PDF
+                  </Button>
+                </div>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div>
                   <div className="text-sm text-muted-foreground mb-1">Empleado</div>
-                  <div className="font-medium">{selectedResult.employeeName || selectedResult.employeeId}</div>
+                  <div className="font-medium">{selectedResult.employeeName || selectedResult.employeeId || 'Consolidado'}</div>
                 </div>
 
                 <div>

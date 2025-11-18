@@ -70,6 +70,7 @@ export default function EntrevistasPage() {
     agent_id: "",
     duration_minutes: 10,
     objectives: [] as string[],
+    target_employees: [] as string[],
     schedule: {
       start_date: new Date().toISOString().split("T")[0],
       end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
@@ -145,6 +146,7 @@ export default function EntrevistasPage() {
         agent_id: "",
         duration_minutes: 10,
         objectives: [],
+        target_employees: [],
         schedule: {
           start_date: new Date().toISOString().split("T")[0],
           end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
@@ -268,6 +270,7 @@ export default function EntrevistasPage() {
       agent_id: interview.agent_id,
       duration_minutes: interview.duration_minutes,
       objectives: interview.objectives || [],
+      target_employees: interview.target_employees || [],
       schedule: interview.schedule || {
         start_date: new Date().toISOString().split("T")[0],
         end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
@@ -301,13 +304,12 @@ export default function EntrevistasPage() {
         agent_id: formData.agent_id,
         duration_minutes: formData.duration_minutes,
         objectives: formData.objectives.length > 0 ? formData.objectives : undefined,
+        target_employees: formData.target_employees,
         schedule: formData.schedule,
       }
 
-      const updatedInterview = await interviewsApi.update(interviewToEdit.interview_id, data)
-      setInterviews((prev) =>
-        prev.map((i) => (i.interview_id === interviewToEdit.interview_id ? updatedInterview : i))
-      )
+      await interviewsApi.update(interviewToEdit.interview_id, data)
+      
       setIsEditDialogOpen(false)
       setInterviewToEdit(null)
 
@@ -319,6 +321,7 @@ export default function EntrevistasPage() {
         agent_id: "",
         duration_minutes: 10,
         objectives: [],
+        target_employees: [],
         schedule: {
           start_date: new Date().toISOString().split("T")[0],
           end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
@@ -333,6 +336,9 @@ export default function EntrevistasPage() {
         title: "Éxito",
         description: "Entrevista actualizada correctamente",
       })
+
+      // Recargar datos para obtener los nombres completos
+      loadData()
     } catch (error) {
       console.error("[v0] Error actualizando entrevista:", error)
       toast({
@@ -536,6 +542,7 @@ export default function EntrevistasPage() {
                     <TableHead>Sección</TableHead>
                     <TableHead>Agente</TableHead>
                     <TableHead>Duración</TableHead>
+                    <TableHead>Fecha</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Empleados Target</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
@@ -545,9 +552,16 @@ export default function EntrevistasPage() {
                   {filteredInterviews.map((interview) => (
                     <TableRow key={interview.interview_id} className="border-border/50 hover:bg-muted/5">
                       <TableCell className="font-medium">{interview.title}</TableCell>
-                      <TableCell>{interview.section_id}</TableCell>
-                      <TableCell className="text-muted-foreground">{interview.agent_id}</TableCell>
+                      <TableCell>{interview.section_name || interview.section_id}</TableCell>
+                      <TableCell className="text-muted-foreground">{interview.agent_name || interview.agent_id}</TableCell>
                       <TableCell>{interview.duration_minutes} min</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(interview.created_at).toLocaleDateString('es-UY', { 
+                          day: '2-digit', 
+                          month: '2-digit', 
+                          year: 'numeric' 
+                        })}
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline" className={statusColors[statusMapping[interview.status]]}>
                           {statusLabels[statusMapping[interview.status]]}
@@ -845,6 +859,7 @@ export default function EntrevistasPage() {
                     agent_id: "",
                     duration_minutes: 10,
                     objectives: [],
+                    target_employees: [],
                     schedule: {
                       start_date: new Date().toISOString().split("T")[0],
                       end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
@@ -1076,6 +1091,7 @@ export default function EntrevistasPage() {
                     agent_id: "",
                     duration_minutes: 10,
                     objectives: [],
+                    target_employees: [],
                     schedule: {
                       start_date: new Date().toISOString().split("T")[0],
                       end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],

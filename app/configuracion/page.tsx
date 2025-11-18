@@ -63,12 +63,10 @@ export default function ConfiguracionPage() {
   
   const [formData, setFormData] = useState({
     name: "",
-    agent_id: "",
   })
 
   const [editFormData, setEditFormData] = useState({
     name: "",
-    agent_id: "",
   })
 
   const { toast } = useToast()
@@ -158,7 +156,7 @@ export default function ConfiguracionPage() {
       
       setSections([...(sections || []), newSection])
       setIsCreateDialogOpen(false)
-      setFormData({ name: "", agent_id: "" })
+      setFormData({ name: "" })
 
       toast({
         title: "Éxito",
@@ -180,7 +178,6 @@ export default function ConfiguracionPage() {
     try {
       const data = {
         name: editFormData.name,
-        agent_id: editFormData.agent_id,
       }
 
       const updated = await sectionsApi.update(selectedSection.section_id, data)
@@ -210,7 +207,6 @@ export default function ConfiguracionPage() {
     setSelectedSection(section)
     setEditFormData({
       name: section.name,
-      agent_id: "",
     })
     setIsEditDialogOpen(true)
   }
@@ -245,13 +241,6 @@ export default function ConfiguracionPage() {
 
   const getAssignedAgentsCount = (sectionId: string) => {
     return (agents || []).filter((a) => a.section_id === sectionId).length
-  }
-
-  const getAssignedAgentsNames = (sectionId: string) => {
-    const assignedAgents = (agents || []).filter((a) => a.section_id === sectionId)
-    if (assignedAgents.length === 0) return "Sin agentes"
-    if (assignedAgents.length === 1) return assignedAgents[0].name
-    return `${assignedAgents.length} agentes`
   }
 
   const filteredSections = Array.isArray(sections)
@@ -351,7 +340,6 @@ export default function ConfiguracionPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Nombre</TableHead>
-                        <TableHead>Agente IA</TableHead>
                         <TableHead>Entrevistas</TableHead>
                         <TableHead>Estado</TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
@@ -361,11 +349,6 @@ export default function ConfiguracionPage() {
                       {filteredSections.map((section) => (
                         <TableRow key={section.section_id}>
                           <TableCell className="font-medium">{section.name}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
-                              {getAssignedAgentsNames(section.section_id)}
-                            </Badge>
-                          </TableCell>
                           <TableCell>
                             <Badge variant="secondary">{section.interviews_configured.length}</Badge>
                           </TableCell>
@@ -586,25 +569,6 @@ export default function ConfiguracionPage() {
                 value={editFormData.name}
                 onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-section-agent">Agente IA Asignado</Label>
-              <Select
-                value={editFormData.agent_id}
-                onValueChange={(value) => setEditFormData({ ...editFormData, agent_id: value })}
-              >
-                <SelectTrigger id="edit-section-agent">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(agents || []).map((agent) => (
-                    <SelectItem key={agent.agent_id} value={agent.agent_id}>
-                      {agent.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
           </div>
           <DialogFooter>

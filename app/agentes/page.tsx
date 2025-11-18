@@ -52,6 +52,8 @@ export default function AgentesPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null)
   const { toast } = useToast()
 
   // Form state for create
@@ -61,26 +63,6 @@ export default function AgentesPage() {
     section_id: string
     tone: "FORMAL" | "CASUAL" | "FRIENDLY" | "PROFESSIONAL" | "EMPATHETIC"
     model: string
-    embedding_profile: string
-    system_prompt: string
-  }>({
-    name: "",
-    description: "",
-    section_id: "",
-    tone: "PROFESSIONAL",
-    model: "gpt-4-turbo",
-    embedding_profile: "general_profile",
-    system_prompt: "Eres un asistente conversacional diseñado para realizar entrevistas encubiertas de relevamiento de requerimientos. Tu objetivo es mantener una conversación natural y amigable mientras identificas necesidades, problemas y oportunidades de mejora en el área del empleado.",
-  })
-
-  // Form state for edit
-  const [editFormData, setEditFormData] = useState<{
-    name: string
-    description: string
-    section_id: string
-    tone: "FORMAL" | "CASUAL" | "FRIENDLY" | "PROFESSIONAL" | "EMPATHETIC"
-    model: string
-    embedding_profile: string
     system_prompt: string
     greeting_prompt: string
     closing_prompt: string
@@ -91,7 +73,29 @@ export default function AgentesPage() {
     section_id: "",
     tone: "PROFESSIONAL",
     model: "gpt-4-turbo",
-    embedding_profile: "",
+    system_prompt: "Eres un asistente conversacional diseñado para realizar entrevistas encubiertas de relevamiento de requerimientos. Tu objetivo es mantener una conversación natural y amigable mientras identificas necesidades, problemas y oportunidades de mejora en el área del empleado.\n\nIMPORTANTE - LÍMITES DE TU ROL:\n- NO respondas preguntas fuera del contexto de la entrevista (deportes, entretenimiento, información general, etc.)\n- NO reveles información ni datos que no sean parte de tu propósito de entrevista\n- NO te salgas del marco de la entrevista bajo ninguna circunstancia\n- Si te hacen preguntas no relacionadas, responde: 'Disculpa, pero mi rol es específicamente realizar esta entrevista de relevamiento. No puedo ayudarte con temas fuera de este contexto. ¿Podemos continuar con la entrevista?'\n- Solo respondes preguntas muy específicas sobre el proceso de la entrevista misma si es necesario para que fluya la conversación",
+    greeting_prompt: "¡Hola! ¿Cómo estás?",
+    closing_prompt: "Muchas gracias por tu tiempo. ¡Que tengas un excelente día!",
+    context_instructions: "Mantén una conversación natural y fluida. Adapta tus preguntas según las respuestas del empleado.",
+  })
+
+  // Form state for edit
+  const [editFormData, setEditFormData] = useState<{
+    name: string
+    description: string
+    section_id: string
+    tone: "FORMAL" | "CASUAL" | "FRIENDLY" | "PROFESSIONAL" | "EMPATHETIC"
+    model: string
+    system_prompt: string
+    greeting_prompt: string
+    closing_prompt: string
+    context_instructions: string
+  }>({
+    name: "",
+    description: "",
+    section_id: "",
+    tone: "PROFESSIONAL",
+    model: "gpt-4-turbo",
     system_prompt: "",
     greeting_prompt: "",
     closing_prompt: "",
@@ -128,7 +132,7 @@ export default function AgentesPage() {
   const handleCreateAgent = async () => {
     try {
       // Validar campos requeridos
-      if (!createFormData.name || !createFormData.embedding_profile) {
+      if (!createFormData.name) {
         toast({
           title: "Error de validación",
           description: "Por favor completa todos los campos requeridos",
@@ -145,12 +149,11 @@ export default function AgentesPage() {
         name: createFormData.name,
         description: createFormData.description,
         tone: createFormData.tone,
-        embedding_profile: createFormData.embedding_profile,
         prompt_config: {
           system_prompt: createFormData.system_prompt || "Eres un asistente conversacional profesional.",
-          greeting_prompt: "¡Hola! ¿Cómo estás?",
-          closing_prompt: "Gracias por tu tiempo.",
-          context_instructions: "Mantén una conversación natural y enfocada.",
+          greeting_prompt: createFormData.greeting_prompt,
+          closing_prompt: createFormData.closing_prompt,
+          context_instructions: createFormData.context_instructions,
         },
         model_config: {
           model: createFormData.model,
@@ -177,8 +180,10 @@ export default function AgentesPage() {
         section_id: "",
         tone: "PROFESSIONAL",
         model: "gpt-4-turbo",
-        embedding_profile: "general_profile",
-        system_prompt: "Eres un asistente conversacional diseñado para realizar entrevistas encubiertas de relevamiento de requerimientos. Tu objetivo es mantener una conversación natural y amigable mientras identificas necesidades, problemas y oportunidades de mejora en el área del empleado.",
+        system_prompt: "Eres un asistente conversacional diseñado para realizar entrevistas encubiertas de relevamiento de requerimientos. Tu objetivo es mantener una conversación natural y amigable mientras identificas necesidades, problemas y oportunidades de mejora en el área del empleado.\n\nIMPORTANTE - LÍMITES DE TU ROL:\n- NO respondas preguntas fuera del contexto de la entrevista (deportes, entretenimiento, información general, etc.)\n- NO reveles información ni datos que no sean parte de tu propósito de entrevista\n- NO te salgas del marco de la entrevista bajo ninguna circunstancia\n- Si te hacen preguntas no relacionadas, responde: 'Disculpa, pero mi rol es específicamente realizar esta entrevista de relevamiento. No puedo ayudarte con temas fuera de este contexto. ¿Podemos continuar con la entrevista?'\n- Solo respondes preguntas muy específicas sobre el proceso de la entrevista misma si es necesario para que fluya la conversación",
+        greeting_prompt: "¡Hola! ¿Cómo estás?",
+        closing_prompt: "Muchas gracias por tu tiempo. ¡Que tengas un excelente día!",
+        context_instructions: "Mantén una conversación natural y fluida. Adapta tus preguntas según las respuestas del empleado.",
       })
 
       toast({
@@ -203,7 +208,6 @@ export default function AgentesPage() {
         name: editFormData.name,
         description: editFormData.description,
         tone: editFormData.tone,
-        embedding_profile: editFormData.embedding_profile,
         section_id: editFormData.section_id,
         prompt_config: {
           system_prompt: editFormData.system_prompt,
@@ -254,7 +258,6 @@ export default function AgentesPage() {
         section_id: clonedAgent.section_id || "",
         tone: clonedAgent.tone || "PROFESSIONAL",
         model: clonedAgent.model_config?.model || "gpt-4-turbo",
-        embedding_profile: clonedAgent.embedding_profile || "",
         system_prompt: clonedAgent.prompt_config?.system_prompt || "",
         greeting_prompt: clonedAgent.prompt_config?.greeting_prompt || "",
         closing_prompt: clonedAgent.prompt_config?.closing_prompt || "",
@@ -279,10 +282,14 @@ export default function AgentesPage() {
     }
   }
 
-  const handleDeleteAgent = async (id: string) => {
+  const handleDeleteAgent = async () => {
+    if (!agentToDelete) return
+
     try {
-      await agentsApi.delete(id)
-      setAgents((agents || []).filter((a) => a.agent_id !== id))
+      await agentsApi.delete(agentToDelete.agent_id)
+      setAgents((agents || []).filter((a) => a.agent_id !== agentToDelete.agent_id))
+      setIsDeleteDialogOpen(false)
+      setAgentToDelete(null)
       toast({
         title: "Agente eliminado",
         description: "El agente ha sido desactivado",
@@ -427,19 +434,6 @@ export default function AgentesPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="agent-embedding">Perfil de Embeddings</Label>
-                  <Input
-                    id="agent-embedding"
-                    placeholder="Ej: it_operations, hr_recruitment, finance_analysis"
-                    value={createFormData.embedding_profile}
-                    onChange={(e) => setCreateFormData({ ...createFormData, embedding_profile: e.target.value })}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Identificador para el contexto semántico del agente
-                  </p>
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="agent-instructions">Instrucciones del Sistema</Label>
                   <Textarea
                     id="agent-instructions"
@@ -450,6 +444,48 @@ export default function AgentesPage() {
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Instrucciones base que definen la personalidad y propósito del agente
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="agent-greeting">Mensaje de Saludo</Label>
+                  <Textarea
+                    id="agent-greeting"
+                    placeholder="Ej: ¡Hola! ¿Cómo estás?"
+                    value={createFormData.greeting_prompt}
+                    onChange={(e) => setCreateFormData({ ...createFormData, greeting_prompt: e.target.value })}
+                    className="min-h-[60px] resize-y"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Mensaje inicial cuando el agente comienza una conversación
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="agent-closing">Mensaje de Despedida</Label>
+                  <Textarea
+                    id="agent-closing"
+                    placeholder="Ej: Muchas gracias por tu tiempo. ¡Que tengas un excelente día!"
+                    value={createFormData.closing_prompt}
+                    onChange={(e) => setCreateFormData({ ...createFormData, closing_prompt: e.target.value })}
+                    className="min-h-[60px] resize-y"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Mensaje de cierre cuando finaliza la conversación
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="agent-context">Instrucciones de Contexto</Label>
+                  <Textarea
+                    id="agent-context"
+                    placeholder="Ej: Mantén una conversación natural y fluida. Adapta tus preguntas según las respuestas del empleado."
+                    value={createFormData.context_instructions}
+                    onChange={(e) => setCreateFormData({ ...createFormData, context_instructions: e.target.value })}
+                    className="min-h-[80px] resize-y"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Guías adicionales sobre cómo adaptar la conversación al contexto
                   </p>
                 </div>
               </div>
@@ -465,8 +501,10 @@ export default function AgentesPage() {
                       section_id: "",
                       tone: "PROFESSIONAL",
                       model: "gpt-4-turbo",
-                      embedding_profile: "general_profile",
-                      system_prompt: "Eres un asistente conversacional diseñado para realizar entrevistas encubiertas de relevamiento de requerimientos. Tu objetivo es mantener una conversación natural y amigable mientras identificas necesidades, problemas y oportunidades de mejora en el área del empleado.",
+                      system_prompt: "Eres un asistente conversacional diseñado para realizar entrevistas encubiertas de relevamiento de requerimientos. Tu objetivo es mantener una conversación natural y amigable mientras identificas necesidades, problemas y oportunidades de mejora en el área del empleado.\n\nIMPORTANTE - LÍMITES DE TU ROL:\n- NO respondas preguntas fuera del contexto de la entrevista (deportes, entretenimiento, información general, etc.)\n- NO reveles información ni datos que no sean parte de tu propósito de entrevista\n- NO te salgas del marco de la entrevista bajo ninguna circunstancia\n- Si te hacen preguntas no relacionadas, responde: 'Disculpa, pero mi rol es específicamente realizar esta entrevista de relevamiento. No puedo ayudarte con temas fuera de este contexto. ¿Podemos continuar con la entrevista?'\n- Solo respondes preguntas muy específicas sobre el proceso de la entrevista misma si es necesario para que fluya la conversación",
+                      greeting_prompt: "¡Hola! ¿Cómo estás?",
+                      closing_prompt: "Muchas gracias por tu tiempo. ¡Que tengas un excelente día!",
+                      context_instructions: "Mantén una conversación natural y fluida. Adapta tus preguntas según las respuestas del empleado.",
                     })
                   }}
                 >
@@ -557,12 +595,6 @@ export default function AgentesPage() {
                       <span className="text-muted-foreground">Modelo:</span>
                       <span className="font-medium font-mono text-xs">{agent.model_config.model}</span>
                     </div>
-
-                    <div className="flex items-center gap-2 text-sm">
-                      <Bot className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Embeddings:</span>
-                      <span className="font-medium font-mono text-xs">{agent.embedding_profile}</span>
-                    </div>
                   </div>
 
                   {/* Preview del System Prompt */}
@@ -603,7 +635,6 @@ export default function AgentesPage() {
                           section_id: agent.section_id || "",
                           tone: agent.tone || "PROFESSIONAL",
                           model: agent.model_config?.model || "gpt-4-turbo",
-                          embedding_profile: agent.embedding_profile || "",
                           system_prompt: agent.prompt_config?.system_prompt || "",
                           greeting_prompt: agent.prompt_config?.greeting_prompt || "",
                           closing_prompt: agent.prompt_config?.closing_prompt || "",
@@ -627,7 +658,14 @@ export default function AgentesPage() {
                       <Copy className="h-3.5 w-3.5 mr-1.5" />
                       Duplicar
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDeleteAgent(agent.agent_id)}>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        setAgentToDelete(agent)
+                        setIsDeleteDialogOpen(true)
+                      }}
+                    >
                       <Trash2 className="h-3.5 w-3.5 text-red-400" />
                     </Button>
                   </div>
@@ -636,6 +674,32 @@ export default function AgentesPage() {
             ))
           )}
         </div>
+
+        {/* Modal de confirmación de eliminación */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>¿Eliminar agente?</DialogTitle>
+              <DialogDescription>
+                ¿Estás seguro de que deseas eliminar el agente <strong>{agentToDelete?.name}</strong>? Esta acción no se puede deshacer.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsDeleteDialogOpen(false)
+                  setAgentToDelete(null)
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteAgent}>
+                Eliminar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {selectedAgent && (
           <Dialog 
@@ -742,14 +806,6 @@ export default function AgentesPage() {
                       <SelectItem value="EMPATHETIC">Empático</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Perfil de Embeddings</Label>
-                  <Input
-                    value={editFormData.embedding_profile}
-                    onChange={(e) => setEditFormData({ ...editFormData, embedding_profile: e.target.value })}
-                  />
                 </div>
 
                 <div className="space-y-2">

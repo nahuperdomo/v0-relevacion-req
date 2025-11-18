@@ -5,7 +5,6 @@ export interface Agent {
   name: string
   description: string
   tone: "FORMAL" | "CASUAL" | "FRIENDLY" | "PROFESSIONAL" | "EMPATHETIC"
-  embedding_profile: string
   section_id: string
   prompt_config: {
     system_prompt: string
@@ -34,7 +33,6 @@ export interface CreateAgentData {
   name: string
   description: string
   tone: "FORMAL" | "CASUAL" | "FRIENDLY" | "PROFESSIONAL" | "EMPATHETIC"
-  embedding_profile: string
   section_id?: string
   prompt_config: {
     system_prompt: string
