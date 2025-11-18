@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Eye, Download, TrendingUp, AlertCircle, CheckCircle2, Clock, BarChart3, FileText, Users, MessageSquare, Target, ChevronLeft, ChevronRight } from "lucide-react"
 import { generateConsolidatedReportPDF, generateIndividualReportPDF } from "@/lib/utils/pdf-generator"
+import { Pagination } from "@/components/ui/pagination"
 
 type Sentiment = "positive" | "neutral" | "negative"
 
@@ -52,11 +53,11 @@ export default function ReportesPage() {
   
   // Estados para paginación de resultados individuales
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(10)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
   
   // Estados para paginación de consolidados
   const [consolidatedPage, setConsolidatedPage] = useState(1)
-  const [consolidatedPerPage] = useState(5)
+  const [consolidatedPerPage, setConsolidatedPerPage] = useState(10)
   const [consolidatedSearch, setConsolidatedSearch] = useState("")
   
   const { toast } = useToast()
@@ -401,60 +402,17 @@ export default function ReportesPage() {
                 })}
 
                     {/* Paginación de consolidados */}
-                    {totalConsolidatedPages > 1 && (
-                      <Card className="border-border/50">
-                        <CardContent className="py-4">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm text-muted-foreground">
-                              Mostrando {startConsolidatedIndex + 1} a {Math.min(endConsolidatedIndex, filteredConsolidated.length)} de {filteredConsolidated.length} análisis
-                            </p>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setConsolidatedPage(prev => Math.max(1, prev - 1))}
-                                disabled={consolidatedPage === 1}
-                              >
-                                <ChevronLeft className="h-4 w-4" />
-                                Anterior
-                              </Button>
-                              <div className="flex items-center gap-1">
-                                {Array.from({ length: totalConsolidatedPages }, (_, i) => i + 1)
-                                  .filter(page => {
-                                    return page === 1 || 
-                                           page === totalConsolidatedPages || 
-                                           (page >= consolidatedPage - 1 && page <= consolidatedPage + 1)
-                                  })
-                                  .map((page, index, array) => {
-                                    const showEllipsis = index > 0 && page - array[index - 1] > 1
-                                    return (
-                                      <div key={page} className="flex items-center gap-1">
-                                        {showEllipsis && <span className="px-1 text-muted-foreground">...</span>}
-                                        <Button
-                                          variant={consolidatedPage === page ? "default" : "outline"}
-                                          size="sm"
-                                          onClick={() => setConsolidatedPage(page)}
-                                          className="min-w-[2.5rem]"
-                                        >
-                                          {page}
-                                        </Button>
-                                      </div>
-                                    )
-                                  })}
-                              </div>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setConsolidatedPage(prev => Math.min(totalConsolidatedPages, prev + 1))}
-                                disabled={consolidatedPage === totalConsolidatedPages}
-                              >
-                                Siguiente
-                                <ChevronRight className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                    {filteredConsolidated.length > 0 && (
+                      <div className="pt-4">
+                        <Pagination
+                          currentPage={consolidatedPage}
+                          totalPages={totalConsolidatedPages}
+                          totalItems={filteredConsolidated.length}
+                          itemsPerPage={consolidatedPerPage}
+                          onPageChange={setConsolidatedPage}
+                          onItemsPerPageChange={setConsolidatedPerPage}
+                        />
+                      </div>
                     )}
                   </>
                 )}
@@ -681,57 +639,16 @@ export default function ReportesPage() {
                     </Table>
 
                     {/* Paginación */}
-                    {totalPages > 1 && (
-                      <div className="flex items-center justify-between border-t border-border/50 pt-4">
-                        <p className="text-sm text-muted-foreground">
-                          Mostrando {startIndex + 1} a {Math.min(endIndex, filteredResults.length)} de {filteredResults.length} resultados
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                            disabled={currentPage === 1}
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                            Anterior
-                          </Button>
-                          <div className="flex items-center gap-1">
-                            {Array.from({ length: totalPages }, (_, i) => i + 1)
-                              .filter(page => {
-                                // Mostrar siempre la primera, última, y páginas cercanas a la actual
-                                return page === 1 || 
-                                       page === totalPages || 
-                                       (page >= currentPage - 1 && page <= currentPage + 1)
-                              })
-                              .map((page, index, array) => {
-                                // Agregar "..." cuando hay saltos
-                                const showEllipsis = index > 0 && page - array[index - 1] > 1
-                                return (
-                                  <div key={page} className="flex items-center gap-1">
-                                    {showEllipsis && <span className="px-1 text-muted-foreground">...</span>}
-                                    <Button
-                                      variant={currentPage === page ? "default" : "outline"}
-                                      size="sm"
-                                      onClick={() => setCurrentPage(page)}
-                                      className="min-w-[2.5rem]"
-                                    >
-                                      {page}
-                                    </Button>
-                                  </div>
-                                )
-                              })}
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                            disabled={currentPage === totalPages}
-                          >
-                            Siguiente
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </div>
+                    {filteredResults.length > 0 && (
+                      <div className="border-t border-border/50 pt-4">
+                        <Pagination
+                          currentPage={currentPage}
+                          totalPages={totalPages}
+                          totalItems={filteredResults.length}
+                          itemsPerPage={itemsPerPage}
+                          onPageChange={setCurrentPage}
+                          onItemsPerPageChange={setItemsPerPage}
+                        />
                       </div>
                     )}
                   </>

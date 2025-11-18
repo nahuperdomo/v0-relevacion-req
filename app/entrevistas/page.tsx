@@ -26,6 +26,7 @@ import { agentsApi, type Agent } from "@/lib/services/agents"
 import { employeesApi, type Employee } from "@/lib/services/employees"
 import { useToast } from "@/hooks/use-toast"
 import { ActiveExecutions } from "@/components/active-executions"
+import { Pagination } from "@/components/ui/pagination"
 
 type InterviewStatus = "DRAFT" | "ACTIVE" | "ARCHIVED"
 
@@ -49,6 +50,8 @@ export default function EntrevistasPage() {
   const [loading, setLoading] = useState(true)
   const [activatingId, setActivatingId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
   const [employeeSearchQuery, setEmployeeSearchQuery] = useState("")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -449,6 +452,21 @@ export default function EntrevistasPage() {
       interview.section_id.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
+  // Paginación
+  const totalPages = Math.ceil(filteredInterviews.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedInterviews = filteredInterviews.slice(startIndex, endIndex)
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  const handleItemsPerPageChange = (items: number) => {
+    setItemsPerPage(items)
+    setCurrentPage(1)
+  }
+
   const statusMapping: Record<Interview["status"], InterviewStatus> = {
     DRAFT: "DRAFT",
     ACTIVE: "ACTIVE",
@@ -534,6 +552,10 @@ export default function EntrevistasPage() {
           <CardContent>
             {loading ? (
               <div className="text-center py-8 text-muted-foreground">Cargando entrevistas...</div>
+            ) : paginatedInterviews.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {searchQuery ? "No se encontraron entrevistas" : "No hay entrevistas creadas"}
+              </div>
             ) : (
               <Table>
                 <TableHeader>
@@ -549,7 +571,7 @@ export default function EntrevistasPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredInterviews.map((interview) => (
+                  {paginatedInterviews.map((interview) => (
                     <TableRow key={interview.interview_id} className="border-border/50 hover:bg-muted/5">
                       <TableCell className="font-medium">{interview.title}</TableCell>
                       <TableCell>{interview.section_name || interview.section_id}</TableCell>
@@ -627,6 +649,18 @@ export default function EntrevistasPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Paginación */}
+        {!loading && filteredInterviews.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredInterviews.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
+        )}
 
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">

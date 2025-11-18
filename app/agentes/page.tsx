@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Search, Edit, Trash2, Bot, Copy, Zap } from "lucide-react"
+import { Pagination } from "@/components/ui/pagination"
 
 const statusColors = {
   ACTIVE: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
@@ -49,6 +50,8 @@ export default function AgentesPage() {
   const [sections, setSections] = useState<Section[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -307,8 +310,23 @@ export default function AgentesPage() {
   const filteredAgents = (agents || []).filter(
     (agent) =>
       agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      agent.section_id.toLowerCase().includes(searchQuery.toLowerCase()),
+      (agent.section_id && agent.section_id.toLowerCase().includes(searchQuery.toLowerCase())),
   )
+
+  // Paginación
+  const totalPages = Math.ceil(filteredAgents.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedAgents = filteredAgents.slice(startIndex, endIndex)
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  const handleItemsPerPageChange = (items: number) => {
+    setItemsPerPage(items)
+    setCurrentPage(1) // Reset to first page when changing items per page
+  }
 
   const getSectionName = (sectionId: string) => {
     return (sections || []).find((s) => s.section_id === sectionId)?.name || sectionId
@@ -563,8 +581,12 @@ export default function AgentesPage() {
         <div className="grid gap-4 md:grid-cols-2">
           {loading ? (
             <div className="col-span-full text-center py-8 text-muted-foreground">Cargando agentes...</div>
+          ) : paginatedAgents.length === 0 ? (
+            <div className="col-span-full text-center py-8 text-muted-foreground">
+              {searchQuery ? "No se encontraron agentes" : "No hay agentes creados"}
+            </div>
           ) : (
-            filteredAgents.map((agent) => (
+            paginatedAgents.map((agent) => (
               <Card key={agent.agent_id} className="border-border/50">
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -674,6 +696,18 @@ export default function AgentesPage() {
             ))
           )}
         </div>
+
+        {/* Paginación */}
+        {!loading && filteredAgents.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredAgents.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
+        )}
 
         {/* Modal de confirmación de eliminación */}
         <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
