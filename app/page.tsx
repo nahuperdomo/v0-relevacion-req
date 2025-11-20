@@ -284,13 +284,6 @@ export default function DashboardPage() {
                   </div>
                   <span className="text-xs text-accent">Operativo</span>
                 </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-muted-foreground" />
-                    <span className="text-sm font-medium">Workers</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">3 activos</span>
-                </div>
               </div>
             </CardContent>
           </Card>

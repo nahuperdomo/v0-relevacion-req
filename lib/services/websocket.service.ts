@@ -66,9 +66,14 @@ class WebSocketService {
         this.socket.emit('join-interview', { executionId });
     }
 
-    sendMessage(content: string) {
+    sendMessage(content: string, attachments?: Array<{
+        url: string;
+        filename: string;
+        mimetype: string;
+        size: number;
+    }>) {
         if (!this.socket) return;
-        this.socket.emit('send-message', { content });
+        this.socket.emit('send-message', { content, attachments });
     }
 
     disconnect() {

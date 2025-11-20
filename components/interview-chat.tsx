@@ -16,7 +16,12 @@ import {
     Calendar,
     Clock,
     FileText,
-    WifiOff
+    WifiOff,
+    Paperclip,
+    File,
+    Image as ImageIcon,
+    FileType,
+    X as XIcon
 } from "lucide-react"
 import { webSocketService, ChatMessage, SessionStartedData } from "@/lib/services/websocket.service"
 import { useAuth } from "@/components/auth-provider"
@@ -46,7 +51,11 @@ export function InterviewChat({ interview, onClose }: InterviewChatProps) {
     const [isConnected, setIsConnected] = useState(false)
     const [isCompleted, setIsCompleted] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [selectedFile, setSelectedFile] = useState<File | null>(null)
+    const [isUploadingFile, setIsUploadingFile] = useState(false)
+    const [sessionId, setSessionId] = useState<string | null>(null)
     const messagesEndRef = useRef<HTMLDivElement>(null)
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -84,6 +93,7 @@ export function InterviewChat({ interview, onClose }: InterviewChatProps) {
 
         const unsubscribeSession = webSocketService.on('session-started', (data: SessionStartedData) => {
             console.log('Session started:', data)
+            setSessionId(data.sessionId)
             setMessages(data.conversationHistory.map(msg => ({
                 ...msg,
                 timestamp: new Date(msg.timestamp)
@@ -153,11 +163,164 @@ export function InterviewChat({ interview, onClose }: InterviewChatProps) {
         }
     }, [user, interview.id])
 
-    const handleSend = () => {
-        if (!input.trim() || !isConnected || isCompleted) return
+    const handleSend = async () => {
+        if ((!input.trim() && !selectedFile) || !isConnected || isCompleted) return
+
+        // Si hay archivo seleccionado, subirlo primero
+        if (selectedFile) {
+            await handleFileUpload()
+            return
+        }
 
         webSocketService.sendMessage(input)
         setInput("")
+    }
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            // Validar tamaño (10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                setError("El archivo es demasiado grande. Máximo 10MB")
+                return
+            }
+            setSelectedFile(file)
+            setError(null)
+        }
+    }
+
+    const handleFileUpload = async () => {
+        if (!selectedFile || !sessionId) return
+
+        setIsUploadingFile(true)
+        // NO establecer isTyping aquí, se establecerá después cuando el agente responda
+
+        try {
+            const formData = new FormData()
+            formData.append('file', selectedFile)
+            formData.append('sessionId', sessionId)
+            if (input.trim()) {
+                formData.append('message', input)
+            }
+
+            // Agregar mensaje del usuario inmediatamente con indicador de carga
+            const userMessageContent = input.trim() 
+                ? `${input}\n\n[📎 Adjuntando: ${selectedFile.name}...]`
+                : `[📎 Adjuntando archivo: ${selectedFile.name}...]`
+
+            setMessages(prev => [...prev, {
+                role: 'user',
+                content: userMessageContent,
+                timestamp: new Date()
+            }])
+
+            // Guardar info para actualizar después
+            const fileName = selectedFile.name
+            const userInputText = input.trim()
+            
+            // Limpiar estado
+            setSelectedFile(null)
+            setInput("")
+            if (fileInputRef.current) {
+                fileInputRef.current.value = ''
+            }
+
+            const response = await fetch('http://localhost:3000/api/v1/interview-files/upload', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Authorization': `Bearer ${getAuthToken()}`
+                }
+            })
+
+            if (!response.ok) {
+                throw new Error('Error al subir el archivo')
+            }
+
+            const result = await response.json()
+            
+            console.log('Upload result:', result)
+
+            // El backend envuelve la respuesta en {success, data, timestamp}
+            const fileData = result.data || result
+            
+            console.log('File data extracted:', fileData)
+            
+            // Validar que tenemos todos los datos necesarios
+            if (!fileData) {
+                throw new Error('No se recibieron datos del servidor')
+            }
+            
+            if (!fileData.fileUrl) {
+                console.error('Missing fileUrl in response:', fileData)
+                throw new Error('La respuesta del servidor no incluye la URL del archivo')
+            }
+            
+            if (!fileData.mimetype) {
+                console.error('Missing mimetype in response:', fileData)
+                throw new Error('La respuesta del servidor no incluye el tipo de archivo')
+            }
+            
+            if (!fileData.filename) {
+                console.error('Missing filename in response:', fileData)
+                throw new Error('La respuesta del servidor no incluye el nombre del archivo')
+            }
+
+            // Actualizar el mensaje del usuario para mostrar que el archivo se subió
+            setMessages(prev => {
+                const newMessages = [...prev]
+                const lastMessage = newMessages[newMessages.length - 1]
+                if (lastMessage.role === 'user') {
+                    lastMessage.content = userInputText 
+                        ? `${userInputText}\n\n[📎 Archivo adjunto: ${fileName}]`
+                        : `[📎 Archivo adjunto: ${fileName}]`
+                }
+                return newMessages
+            })
+
+            // Ahora enviar por WebSocket con los attachments para que el agente responda
+            setIsTyping(true) // Ahora sí mostrar que el agente está escribiendo
+            
+            const attachment = {
+                url: fileData.fileUrl,
+                filename: fileData.filename,
+                mimetype: fileData.mimetype,
+                size: fileData.size
+            }
+            
+            console.log('Sending attachment via WebSocket:', attachment)
+            console.log('Attachment validation:', {
+                hasUrl: !!attachment.url,
+                hasFilename: !!attachment.filename,
+                hasMimetype: !!attachment.mimetype,
+                hasSize: !!attachment.size
+            })
+            
+            webSocketService.sendMessage(
+                userInputText ? `${userInputText}\n\n[Archivo adjunto: ${fileName}]` : `[Archivo adjunto: ${fileName}]`,
+                [attachment]
+            )
+
+        } catch (error) {
+            console.error('Error uploading file:', error)
+            setError("Error al subir el archivo. Inténtalo de nuevo.")
+            setIsTyping(false)
+        } finally {
+            setIsUploadingFile(false)
+        }
+    }
+
+    const handleRemoveFile = () => {
+        setSelectedFile(null)
+        if (fileInputRef.current) {
+            fileInputRef.current.value = ''
+        }
+    }
+
+    const getFileIcon = (file: File) => {
+        if (file.type.startsWith('image/')) return <ImageIcon className="h-4 w-4" />
+        if (file.type === 'application/pdf') return <FileType className="h-4 w-4" />
+        return <File className="h-4 w-4" />
     }
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -271,7 +434,20 @@ export function InterviewChat({ interview, onClose }: InterviewChatProps) {
                     </div>
                 ))}
 
-                {isTyping && (
+                {isUploadingFile && (
+                    <div className="flex gap-3 justify-start">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10 flex-shrink-0">
+                            <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
+                        </div>
+                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl px-4 py-3">
+                            <p className="text-sm text-blue-600 dark:text-blue-400">
+                                Cargando y analizando archivo...
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {isTyping && !isUploadingFile && (
                     <div className="flex gap-3 justify-start">
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 flex-shrink-0">
                             <Bot className="h-4 w-4 text-primary" />
@@ -308,30 +484,73 @@ export function InterviewChat({ interview, onClose }: InterviewChatProps) {
             {/* Input */}
             {!isCompleted && (
                 <div className="border-t border-border bg-card p-4">
-                    <div className="flex gap-2 max-w-4xl mx-auto">
-                        <Input
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyPress={handleKeyPress}
-                            placeholder="Escribe tu respuesta..."
-                            disabled={!isConnected || isTyping}
-                            className="flex-1"
-                        />
-                        <Button
-                            onClick={handleSend}
-                            disabled={!input.trim() || !isConnected || isTyping}
-                            className="bg-primary hover:bg-primary/90"
-                        >
-                            {isTyping ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <Send className="h-4 w-4" />
-                            )}
-                        </Button>
+                    <div className="max-w-4xl mx-auto">
+                        {/* File Preview */}
+                        {selectedFile && (
+                            <div className="mb-3 p-3 bg-muted rounded-lg flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    {getFileIcon(selectedFile)}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">{selectedFile.name}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {(selectedFile.size / 1024).toFixed(1)} KB
+                                        </p>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={handleRemoveFile}
+                                    className="h-8 w-8"
+                                >
+                                    <XIcon className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        )}
+
+                        <div className="flex gap-2">
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                onChange={handleFileSelect}
+                                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+                                className="hidden"
+                            />
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={!isConnected || isTyping || isUploadingFile || !!selectedFile}
+                                title="Adjuntar archivo"
+                            >
+                                <Paperclip className="h-4 w-4" />
+                            </Button>
+                            <Input
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onKeyPress={handleKeyPress}
+                                placeholder={selectedFile ? "Mensaje opcional..." : "Escribe tu respuesta o adjunta un archivo..."}
+                                disabled={!isConnected || isTyping || isUploadingFile}
+                                className="flex-1"
+                            />
+                            <Button
+                                onClick={handleSend}
+                                disabled={(!input.trim() && !selectedFile) || !isConnected || isTyping || isUploadingFile}
+                                className="bg-primary hover:bg-primary/90"
+                            >
+                                {isTyping || isUploadingFile ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Send className="h-4 w-4" />
+                                )}
+                            </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground text-center mt-2">
+                            {selectedFile 
+                                ? "Haz clic en enviar para subir el archivo" 
+                                : "Presiona Enter para enviar o adjunta archivos (imágenes, PDFs, documentos)"}
+                        </p>
                     </div>
-                    <p className="text-xs text-muted-foreground text-center mt-2">
-                        Presiona Enter para enviar
-                    </p>
                 </div>
             )}
         </div>

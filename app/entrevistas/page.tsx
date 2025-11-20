@@ -419,7 +419,7 @@ export default function EntrevistasPage() {
 
       toast({
         title: "Entrevistas asignadas",
-        description: `Se asignaron ${targetEmployees.length} entrevista(s) con notificación por ${notificationChannel === 'whatsapp' ? 'WhatsApp + Plataforma' : 'Plataforma'}`,
+        description: `Se asignaron ${targetEmployees.length} entrevista(s) - Canal: ${notificationChannel === 'whatsapp' ? 'WhatsApp' : 'Plataforma Web'}`,
       })
 
       // Resetear estado
@@ -1188,7 +1188,7 @@ export default function EntrevistasPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Canal de Notificación</Label>
+                  <Label>Canal de Ejecución</Label>
                   <Select
                     value={notificationChannel}
                     onValueChange={(value: "platform" | "whatsapp") => setNotificationChannel(value)}
@@ -1199,14 +1199,14 @@ export default function EntrevistasPage() {
                     <SelectContent>
                       <SelectItem value="platform">
                         <div className="flex flex-col">
-                          <span className="font-medium">Solo Plataforma</span>
-                          <span className="text-xs text-muted-foreground">Sin WhatsApp</span>
+                          <span className="font-medium">Plataforma Web</span>
+                          <span className="text-xs text-muted-foreground">Entrevista en navegador</span>
                         </div>
                       </SelectItem>
                       <SelectItem value="whatsapp">
                         <div className="flex flex-col">
-                          <span className="font-medium">WhatsApp + Plataforma</span>
-                          <span className="text-xs text-muted-foreground">Enviar mensaje</span>
+                          <span className="font-medium">WhatsApp</span>
+                          <span className="text-xs text-muted-foreground">Conversación por WhatsApp</span>
                         </div>
                       </SelectItem>
                     </SelectContent>
