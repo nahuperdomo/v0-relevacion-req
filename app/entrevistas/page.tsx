@@ -258,10 +258,14 @@ export default function EntrevistasPage() {
   }
 
   const handleOpenExecuteDialog = (interview: Interview) => {
+    console.log('🔍 DEBUG - Opening execute dialog')
+    console.log('🔍 DEBUG - Current notificationChannel before reset:', notificationChannel)
     setSelectedInterview(interview)
     setSelectedEmployees([])
     setEmployeeSearchQuery("")
     setExecutionStatus(null)
+    setNotificationChannel('platform') // Reset al valor por defecto
+    console.log('🔍 DEBUG - notificationChannel after reset: platform')
     setIsExecuteDialogOpen(true)
   }
 
@@ -402,18 +406,25 @@ export default function EntrevistasPage() {
       }
 
       // Crear asignaciones individuales para cada empleado
-      const assignmentPromises = targetEmployees.map(employeeId => 
-        fetch('http://localhost:3000/api/v1/interview-assignments', {
+      console.log('🔍 DEBUG - notificationChannel state:', notificationChannel)
+      console.log('🔍 DEBUG - notificationChannel type:', typeof notificationChannel)
+      
+      const assignmentPromises = targetEmployees.map(employeeId => {
+        const payload = {
+          interviewId: selectedInterview.interview_id,
+          employeeId: employeeId,
+          assignedBy: 'admin-001', // TODO: Get from auth context
+          notificationChannel: notificationChannel,
+        }
+        
+        console.log('🔍 DEBUG - Sending payload:', JSON.stringify(payload, null, 2))
+        
+        return fetch('http://localhost:3000/api/v1/interview-assignments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            interviewId: selectedInterview.interview_id,
-            employeeId: employeeId,
-            assignedBy: 'admin-001', // TODO: Get from auth context
-            notificationChannel: notificationChannel,
-          }),
+          body: JSON.stringify(payload),
         }).then(res => res.json())
-      )
+      })
 
       await Promise.all(assignmentPromises)
 
@@ -1191,7 +1202,10 @@ export default function EntrevistasPage() {
                   <Label>Canal de Ejecución</Label>
                   <Select
                     value={notificationChannel}
-                    onValueChange={(value: "platform" | "whatsapp") => setNotificationChannel(value)}
+                    onValueChange={(value: "platform" | "whatsapp") => {
+                      console.log('🔍 DEBUG - Select changed to:', value)
+                      setNotificationChannel(value)
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -1211,6 +1225,7 @@ export default function EntrevistasPage() {
                       </SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">Valor actual: {notificationChannel}</p>
                 </div>
               </div>
 
