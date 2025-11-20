@@ -30,12 +30,16 @@ import {
   X,
 } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/components/auth-provider"
 import { interviewsApi, type InterviewStats } from "@/lib/services/interviews"
 import { employeesApi } from "@/lib/services/employees"
 import { agentsApi, type AgentStats } from "@/lib/services/agents"
 import { resultsApi, type Result } from "@/lib/services/results"
 
 export default function DashboardPage() {
+  const router = useRouter()
+  const { user } = useAuth()
   const [stats, setStats] = useState<{
     interviews?: InterviewStats
     agents?: AgentStats
@@ -48,6 +52,13 @@ export default function DashboardPage() {
   const [interviewResults, setInterviewResults] = useState<Result[]>([])
   const [loadingResults, setLoadingResults] = useState(false)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
+
+  // Redirect regular users to their interviews page
+  useEffect(() => {
+    if (user && user.role === "USER") {
+      router.push("/mis-entrevistas")
+    }
+  }, [user, router])
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -66,9 +77,9 @@ export default function DashboardPage() {
           agents: agentStats,
           employeesCount: employeesData.total,
         })
-        
+
         setRecentInterviews(interviewsData.interviews)
-        
+
       } catch (error: any) {
         console.error("[v0] Error cargando datos del dashboard:", error)
         setConnectionError(error.message || "Error al cargar los datos")
@@ -84,7 +95,7 @@ export default function DashboardPage() {
     setSelectedInterviewDetails(interview)
     setIsDetailsModalOpen(true)
     setLoadingResults(true)
-    
+
     try {
       // Obtener resultados de la entrevista
       const response = await resultsApi.getAll({
@@ -191,55 +202,55 @@ export default function DashboardPage() {
                   recentInterviews
                     .filter((interview) => interview.status !== "DRAFT") // Excluir borradores
                     .map((interview) => (
-                    <button
-                      key={interview.interview_id}
-                      onClick={() => handleInterviewClick(interview)}
-                      className="w-full flex items-center justify-between p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors cursor-pointer text-left"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                          {interview.status === "COMPLETED" ? (
-                            <CheckCircle2 className="h-5 w-5 text-accent" />
-                          ) : interview.status === "ACTIVE" ? (
-                            <Activity className="h-5 w-5 text-primary" />
-                          ) : (
-                            <Clock className="h-5 w-5 text-muted-foreground" />
-                          )}
+                      <button
+                        key={interview.interview_id}
+                        onClick={() => handleInterviewClick(interview)}
+                        className="w-full flex items-center justify-between p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors cursor-pointer text-left"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                            {interview.status === "COMPLETED" ? (
+                              <CheckCircle2 className="h-5 w-5 text-accent" />
+                            ) : interview.status === "ACTIVE" ? (
+                              <Activity className="h-5 w-5 text-primary" />
+                            ) : (
+                              <Clock className="h-5 w-5 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium text-card-foreground">{interview.title}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {interview.section_name || interview.section_id}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-card-foreground">{interview.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {interview.section_name || interview.section_id}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="text-sm font-medium text-card-foreground">
-                            {interview.conversations_completed || 0}/{interview.conversations_total || 0}
-                          </p>
-                          <p className="text-xs text-muted-foreground">respuestas</p>
-                        </div>
-                        <Badge
-                          variant={
-                            interview.status === "COMPLETED"
-                              ? "default"
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className="text-sm font-medium text-card-foreground">
+                              {interview.conversations_completed || 0}/{interview.conversations_total || 0}
+                            </p>
+                            <p className="text-xs text-muted-foreground">respuestas</p>
+                          </div>
+                          <Badge
+                            variant={
+                              interview.status === "COMPLETED"
+                                ? "default"
+                                : interview.status === "ACTIVE"
+                                  ? "secondary"
+                                  : "outline"
+                            }
+                          >
+                            {interview.status === "COMPLETED"
+                              ? "Completada"
                               : interview.status === "ACTIVE"
-                                ? "secondary"
-                                : "outline"
-                          }
-                        >
-                          {interview.status === "COMPLETED"
-                            ? "Completada"
-                            : interview.status === "ACTIVE"
-                              ? "Activa"
-                              : interview.status === "PAUSED"
-                                ? "Pausada"
-                                : "Borrador"}
-                        </Badge>
-                      </div>
-                    </button>
-                  ))
+                                ? "Activa"
+                                : interview.status === "PAUSED"
+                                  ? "Pausada"
+                                  : "Borrador"}
+                          </Badge>
+                        </div>
+                      </button>
+                    ))
                 )}
               </div>
             </CardContent>
@@ -380,175 +391,175 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-            {/* Información de la Entrevista */}
-            <Card className="border-border/50 bg-gradient-to-br from-muted/30 to-transparent">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-primary/10">
-                    <Target className="h-4 w-4 text-primary" />
-                  </div>
-                  Detalles de la Entrevista
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="rounded-lg bg-background/50 p-4 border border-border/50">
-                  <div className="text-sm font-medium text-muted-foreground mb-2">Descripción</div>
-                  <p className="text-sm leading-relaxed">{selectedInterviewDetails?.description || "Sin descripción"}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="rounded-lg bg-background/50 p-4 border border-border/50">
-                    <div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Sección</div>
-                    <p className="text-sm font-semibold">
-                      {selectedInterviewDetails?.section_name || selectedInterviewDetails?.section_id}
-                    </p>
-                  </div>
-                  <div className="rounded-lg bg-background/50 p-4 border border-border/50">
-                    <div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Agente IA</div>
-                    <p className="text-sm font-semibold">{selectedInterviewDetails?.agent_id || "N/A"}</p>
-                  </div>
-                </div>
-                {selectedInterviewDetails?.objectives && selectedInterviewDetails.objectives.length > 0 && (
-                  <div className="rounded-lg bg-primary/5 p-4 border border-primary/10">
-                    <div className="text-sm font-medium mb-3 flex items-center gap-2">
+              {/* Información de la Entrevista */}
+              <Card className="border-border/50 bg-gradient-to-br from-muted/30 to-transparent">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-primary/10">
                       <Target className="h-4 w-4 text-primary" />
-                      Objetivos de la Entrevista
                     </div>
-                    <div className="space-y-2">
-                      {selectedInterviewDetails.objectives.map((obj: string, idx: number) => (
-                        <div key={idx} className="flex items-start gap-3 text-sm bg-background/50 p-3 rounded-lg border border-border/30">
-                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-primary flex-shrink-0">
-                            <span className="text-xs font-bold">{idx + 1}</span>
+                    Detalles de la Entrevista
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="rounded-lg bg-background/50 p-4 border border-border/50">
+                    <div className="text-sm font-medium text-muted-foreground mb-2">Descripción</div>
+                    <p className="text-sm leading-relaxed">{selectedInterviewDetails?.description || "Sin descripción"}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="rounded-lg bg-background/50 p-4 border border-border/50">
+                      <div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Sección</div>
+                      <p className="text-sm font-semibold">
+                        {selectedInterviewDetails?.section_name || selectedInterviewDetails?.section_id}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-background/50 p-4 border border-border/50">
+                      <div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Agente IA</div>
+                      <p className="text-sm font-semibold">{selectedInterviewDetails?.agent_id || "N/A"}</p>
+                    </div>
+                  </div>
+                  {selectedInterviewDetails?.objectives && selectedInterviewDetails.objectives.length > 0 && (
+                    <div className="rounded-lg bg-primary/5 p-4 border border-primary/10">
+                      <div className="text-sm font-medium mb-3 flex items-center gap-2">
+                        <Target className="h-4 w-4 text-primary" />
+                        Objetivos de la Entrevista
+                      </div>
+                      <div className="space-y-2">
+                        {selectedInterviewDetails.objectives.map((obj: string, idx: number) => (
+                          <div key={idx} className="flex items-start gap-3 text-sm bg-background/50 p-3 rounded-lg border border-border/30">
+                            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-primary flex-shrink-0">
+                              <span className="text-xs font-bold">{idx + 1}</span>
+                            </div>
+                            <span className="leading-relaxed">{obj}</span>
                           </div>
-                          <span className="leading-relaxed">{obj}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Resultados Individuales */}
+              <Card className="border-border/50">
+                <CardHeader className="border-b bg-muted/30">
+                  <CardTitle className="text-lg flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-primary/10">
+                        <MessageSquare className="h-4 w-4 text-primary" />
+                      </div>
+                      <span>Resultados Individuales</span>
+                      <Badge variant="secondary" className="ml-2">
+                        {interviewResults.length} resultados
+                      </Badge>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {loadingResults ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="relative">
+                          <div className="h-12 w-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+                        </div>
+                        <p className="text-sm font-medium">Cargando resultados...</p>
+                      </div>
+                    </div>
+                  ) : interviewResults.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
+                          <MessageSquare className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                        <p className="text-sm text-muted-foreground">No hay resultados disponibles para esta entrevista</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-6 space-y-4 max-h-[450px] overflow-y-auto">
+                      {interviewResults.map((result) => (
+                        <div
+                          key={result.id}
+                          className="group relative p-5 rounded-xl border border-border bg-gradient-to-br from-background to-muted/20 hover:from-accent/10 hover:to-muted/30 hover:border-primary/20 transition-all duration-300 shadow-sm hover:shadow-md"
+                        >
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/3 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                          <div className="relative">
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-2 w-2 rounded-full bg-primary/60" />
+                                  <div className="font-semibold text-base">{result.employeeName || result.employeeId}</div>
+                                </div>
+                                <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                  <Calendar className="h-3 w-3" />
+                                  {new Date(result.createdAt).toLocaleDateString("es-ES", {
+                                    day: "2-digit",
+                                    month: "short",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <div className={`
+                                px-3 py-1.5 rounded-lg text-xs font-medium border backdrop-blur-sm
+                                ${result.sentiment === "positive"
+                                    ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                    : result.sentiment === "negative"
+                                      ? "bg-red-500/15 text-red-400 border-red-500/30"
+                                      : "bg-slate-500/15 text-slate-400 border-slate-500/30"
+                                  }
+                              `}>
+                                  {result.sentiment === "positive"
+                                    ? "😊 Positivo"
+                                    : result.sentiment === "negative"
+                                      ? "😟 Negativo"
+                                      : "😐 Neutral"}
+                                </div>
+
+                                <div className="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500/15 text-amber-400 border border-amber-500/30 backdrop-blur-sm">
+                                  ⚡ {result.urgencyLevel}/5
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="mb-4 p-4 rounded-lg bg-background/60 border border-border/50">
+                              <p className="text-sm text-foreground/90 leading-relaxed">{result.summary}</p>
+                            </div>
+
+                            {result.topicsDetected && result.topicsDetected.length > 0 && (
+                              <div className="flex flex-wrap gap-2">
+                                {result.topicsDetected.slice(0, 5).map((topic, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15 transition-colors"
+                                  >
+                                    {topic}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Resultados Individuales */}
-            <Card className="border-border/50">
-              <CardHeader className="border-b bg-muted/30">
-                <CardTitle className="text-lg flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-primary/10">
-                      <MessageSquare className="h-4 w-4 text-primary" />
-                    </div>
-                    <span>Resultados Individuales</span>
-                    <Badge variant="secondary" className="ml-2">
-                      {interviewResults.length} resultados
-                    </Badge>
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                {loadingResults ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="relative">
-                        <div className="h-12 w-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
-                      </div>
-                      <p className="text-sm font-medium">Cargando resultados...</p>
-                    </div>
-                  </div>
-                ) : interviewResults.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
-                        <MessageSquare className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                      <p className="text-sm text-muted-foreground">No hay resultados disponibles para esta entrevista</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-6 space-y-4 max-h-[450px] overflow-y-auto">
-                    {interviewResults.map((result) => (
-                      <div
-                        key={result.id}
-                        className="group relative p-5 rounded-xl border border-border bg-gradient-to-br from-background to-muted/20 hover:from-accent/10 hover:to-muted/30 hover:border-primary/20 transition-all duration-300 shadow-sm hover:shadow-md"
-                      >
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/3 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                        
-                        <div className="relative">
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <div className="h-2 w-2 rounded-full bg-primary/60" />
-                                <div className="font-semibold text-base">{result.employeeName || result.employeeId}</div>
-                              </div>
-                              <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-                                <Calendar className="h-3 w-3" />
-                                {new Date(result.createdAt).toLocaleDateString("es-ES", {
-                                  day: "2-digit",
-                                  month: "short",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-2">
-                              <div className={`
-                                px-3 py-1.5 rounded-lg text-xs font-medium border backdrop-blur-sm
-                                ${result.sentiment === "positive" 
-                                  ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" 
-                                  : result.sentiment === "negative"
-                                    ? "bg-red-500/15 text-red-400 border-red-500/30"
-                                    : "bg-slate-500/15 text-slate-400 border-slate-500/30"
-                                }
-                              `}>
-                                {result.sentiment === "positive"
-                                  ? "😊 Positivo"
-                                  : result.sentiment === "negative"
-                                    ? "😟 Negativo"
-                                    : "😐 Neutral"}
-                              </div>
-                              
-                              <div className="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500/15 text-amber-400 border border-amber-500/30 backdrop-blur-sm">
-                                ⚡ {result.urgencyLevel}/5
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="mb-4 p-4 rounded-lg bg-background/60 border border-border/50">
-                            <p className="text-sm text-foreground/90 leading-relaxed">{result.summary}</p>
-                          </div>
-
-                          {result.topicsDetected && result.topicsDetected.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {result.topicsDetected.slice(0, 5).map((topic, idx) => (
-                                <div 
-                                  key={idx} 
-                                  className="px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15 transition-colors"
-                                >
-                                  {topic}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-6 px-6 pb-6 border-t bg-gradient-to-r from-muted/20 to-transparent">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setIsDetailsModalOpen(false)}
               className="hover:bg-accent/50 transition-colors"
             >
               <X className="h-4 w-4 mr-2" />
               Cerrar
             </Button>
-            <Button 
+            <Button
               onClick={() => {
                 window.location.href = `/reportes?interview=${selectedInterviewDetails?.interview_id}`
               }}

@@ -206,7 +206,7 @@ export function ActiveExecutions() {
                   Ver Detalles
                 </Button>
                 
-                {execution.status === 'IN_PROGRESS' ? (
+                {execution.status === 'IN_PROGRESS' && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -215,7 +215,9 @@ export function ActiveExecutions() {
                     <Pause className="h-3.5 w-3.5 mr-1.5" />
                     Pausar
                   </Button>
-                ) : (
+                )}
+
+                {execution.status === 'PAUSED' && (
                   <Button
                     variant="outline"
                     size="sm"

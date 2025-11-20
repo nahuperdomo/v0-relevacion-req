@@ -61,6 +61,7 @@ export default function EntrevistasPage() {
   const [interviewToEdit, setInterviewToEdit] = useState<Interview | null>(null)
   const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null)
   const [executeType, setExecuteType] = useState<"employees" | "section">("employees")
+  const [notificationChannel, setNotificationChannel] = useState<"platform" | "whatsapp">("platform")
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([])
   const [executionStatus, setExecutionStatus] = useState<any>(null)
   const { toast } = useToast()
@@ -400,33 +401,36 @@ export default function EntrevistasPage() {
         targetEmployees = selectedEmployees
       }
 
-      // Create execution
-      const execution = await executionsService.create({
-        interview_id: selectedInterview.interview_id,
-        target_employees: targetEmployees,
-      })
+      // Crear asignaciones individuales para cada empleado
+      const assignmentPromises = targetEmployees.map(employeeId => 
+        fetch('http://localhost:3000/api/v1/interview-assignments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            interviewId: selectedInterview.interview_id,
+            employeeId: employeeId,
+            assignedBy: 'admin-001', // TODO: Get from auth context
+            notificationChannel: notificationChannel,
+          }),
+        }).then(res => res.json())
+      )
 
-      // Start execution immediately
-      await executionsService.start(execution.execution_id)
+      await Promise.all(assignmentPromises)
 
       toast({
-        title: "Ejecución iniciada",
-        description: `Se iniciaron conversaciones con ${targetEmployees.length} empleado(s)`,
+        title: "Entrevistas asignadas",
+        description: `Se asignaron ${targetEmployees.length} entrevista(s) con notificación por ${notificationChannel === 'whatsapp' ? 'WhatsApp + Plataforma' : 'Plataforma'}`,
       })
 
-      setExecutionStatus({
-        execution_id: execution.execution_id,
-        interview_id: selectedInterview.interview_id,
-        employees_count: targetEmployees.length,
-        status: "IN_PROGRESS",
-        initiated_at: new Date().toISOString(),
-      })
+      // Resetear estado
+      setNotificationChannel('platform')
+      setSelectedEmployees([])
       
-      // Cerrar diálogo después de 2 segundos
+      // Cerrar diálogo después de 1 segundo
       setTimeout(() => {
         setIsExecuteDialogOpen(false)
         loadData() // Recargar datos
-      }, 2000)
+      }, 1000)
     } catch (error: any) {
       console.error("[v0] Error ejecutando entrevista:", error)
       toast({
@@ -1163,23 +1167,51 @@ export default function EntrevistasPage() {
             
             <div className="space-y-4 py-4">
               {/* Tipo de ejecución */}
-              <div className="space-y-2">
-                <Label>Tipo de Ejecución</Label>
-                <Select
-                  value={executeType}
-                  onValueChange={(value: "employees" | "section") => {
-                    setExecuteType(value)
-                    setSelectedEmployees([])
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="employees">Empleados específicos</SelectItem>
-                    <SelectItem value="section">Toda la sección</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Tipo de Ejecución</Label>
+                  <Select
+                    value={executeType}
+                    onValueChange={(value: "employees" | "section") => {
+                      setExecuteType(value)
+                      setSelectedEmployees([])
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="employees">Empleados específicos</SelectItem>
+                      <SelectItem value="section">Toda la sección</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Canal de Notificación</Label>
+                  <Select
+                    value={notificationChannel}
+                    onValueChange={(value: "platform" | "whatsapp") => setNotificationChannel(value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="platform">
+                        <div className="flex flex-col">
+                          <span className="font-medium">Solo Plataforma</span>
+                          <span className="text-xs text-muted-foreground">Sin WhatsApp</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="whatsapp">
+                        <div className="flex flex-col">
+                          <span className="font-medium">WhatsApp + Plataforma</span>
+                          <span className="text-xs text-muted-foreground">Enviar mensaje</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* Información de la sección */}
