@@ -31,7 +31,7 @@ export interface Interview {
 export interface CreateInterviewData {
   interview_id?: string
   title: string
-  description: string
+  description?: string
   section_id: string
   agent_id: string
   duration_minutes: number

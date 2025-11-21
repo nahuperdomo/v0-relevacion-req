@@ -118,10 +118,10 @@ export default function EntrevistasPage() {
   const handleCreateInterview = async () => {
     try {
       // Validar campos requeridos
-      if (!formData.title || !formData.description || !formData.section_id || !formData.agent_id) {
+      if (!formData.title || !formData.section_id || !formData.agent_id) {
         toast({
           title: "Error de validación",
-          description: "Por favor completa todos los campos requeridos (título, descripción, sección y agente)",
+          description: "Por favor completa todos los campos requeridos (título, sección y agente)",
           variant: "destructive",
         })
         return
@@ -130,7 +130,7 @@ export default function EntrevistasPage() {
       // Preparar datos para el endpoint
       const data: CreateInterviewData = {
         title: formData.title,
-        description: formData.description,
+        description: formData.description || undefined,
         section_id: formData.section_id,
         agent_id: formData.agent_id,
         duration_minutes: formData.duration_minutes,
@@ -723,7 +723,7 @@ export default function EntrevistasPage() {
                   </Label>
                   <Textarea
                     id="description"
-                    placeholder="Describe brevemente el objetivo y contexto de esta entrevista..."
+                    placeholder="Describe el objetivo de esta entrevista (opcional)"
                     rows={3}
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -970,11 +970,11 @@ export default function EntrevistasPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="edit-description">
-                    Descripción <span className="text-red-500">*</span>
+                    Descripción
                   </Label>
                   <Textarea
                     id="edit-description"
-                    placeholder="Describe el objetivo de esta entrevista"
+                    placeholder="Describe el objetivo de esta entrevista (opcional)"
                     rows={3}
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
