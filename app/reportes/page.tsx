@@ -52,7 +52,6 @@ export default function ReportesPage() {
   const [filterSection, setFilterSection] = useState<string>("all")
   const [filterSentiment, setFilterSentiment] = useState<string>("all")
   const [selectedResult, setSelectedResult] = useState<Result | null>(null)
-  const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null)
   
   // Estados para paginación de resultados individuales
   const [currentPage, setCurrentPage] = useState(1)
@@ -353,9 +352,30 @@ export default function ReportesPage() {
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => setSelectedResult(consolidated)}
+                            onClick={async () => {
+                              try {
+                                await generateConsolidatedReportPDF(
+                                  consolidated,
+                                  interview.title,
+                                  individualCount
+                                )
+                                toast({
+                                  title: "PDF Generado",
+                                  description: "El reporte consolidado se ha descargado exitosamente",
+                                })
+                              } catch (error) {
+                                console.error("Error generando PDF:", error)
+                                toast({
+                                  title: "Error",
+                                  description: "No se pudo generar el PDF",
+                                  variant: "destructive",
+                                })
+                              }
+                            }}
+                            className="gap-2"
                           >
-                            Ver Detalle
+                            <Download className="h-4 w-4" />
+                            Descargar PDF
                           </Button>
                         </div>
                       </CardHeader>
@@ -685,21 +705,7 @@ export default function ReportesPage() {
                     size="sm"
                     onClick={async () => {
                       try {
-                        // Verificar si es consolidado o individual
-                        const isConsolidated = selectedResult.employeeId === null || selectedResult.employeeId === 'CONSOLIDATED'
-                        
-                        if (isConsolidated) {
-                          const interview = interviews.find(int => int.interview_id === selectedResult.interviewId)
-                          const individualCount = results.filter(r => r.interviewId === selectedResult.interviewId).length
-                          await generateConsolidatedReportPDF(
-                            selectedResult,
-                            interview?.title || selectedResult.interviewTitle || selectedResult.interviewId,
-                            individualCount
-                          )
-                        } else {
-                          await generateIndividualReportPDF(selectedResult)
-                        }
-                        
+                        await generateIndividualReportPDF(selectedResult)
                         toast({
                           title: "PDF Generado",
                           description: "El reporte se ha descargado exitosamente",
@@ -723,7 +729,7 @@ export default function ReportesPage() {
               <div className="space-y-4 py-4">
                 <div>
                   <div className="text-sm text-muted-foreground mb-1">Empleado</div>
-                  <div className="font-medium">{selectedResult.employeeName || selectedResult.employeeId || 'Consolidado'}</div>
+                  <div className="font-medium">{selectedResult.employeeName || selectedResult.employeeId}</div>
                 </div>
 
                 <div>
