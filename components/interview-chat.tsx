@@ -130,10 +130,7 @@ export function InterviewChat({ interview, onClose }: InterviewChatProps) {
                     body: JSON.stringify({ status: 'COMPLETED' })
                 })
                 
-                // Esperar 3 segundos antes de cerrar para que el usuario vea el mensaje
-                setTimeout(() => {
-                    onClose()
-                }, 3000)
+                // No cerrar automáticamente - el usuario debe cerrar manualmente
             } catch (error) {
                 console.error('Error updating assignment status:', error)
             }
@@ -473,6 +470,13 @@ export function InterviewChat({ interview, onClose }: InterviewChatProps) {
                                 <p className="text-sm text-muted-foreground">
                                     Gracias por tu tiempo y tus valiosas respuestas.
                                 </p>
+                                <Button 
+                                    onClick={onClose}
+                                    className="mt-2 w-full"
+                                    variant="default"
+                                >
+                                    Cerrar
+                                </Button>
                             </div>
                         </Card>
                     </div>

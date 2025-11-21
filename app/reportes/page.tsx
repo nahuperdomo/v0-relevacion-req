@@ -19,24 +19,27 @@ import { Search, Eye, Download, TrendingUp, AlertCircle, CheckCircle2, Clock, Ba
 import { generateConsolidatedReportPDF, generateIndividualReportPDF } from "@/lib/utils/pdf-generator"
 import { Pagination } from "@/components/ui/pagination"
 
-type Sentiment = "positive" | "neutral" | "negative"
+type Sentiment = "positive" | "neutral" | "negative" | "unknown"
 
 const sentimentColors: Record<Sentiment, string> = {
   positive: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   neutral: "bg-slate-500/10 text-slate-400 border-slate-500/20",
   negative: "bg-red-500/10 text-red-400 border-red-500/20",
+  unknown: "bg-gray-500/10 text-gray-400 border-gray-500/20",
 }
 
 const sentimentLabels: Record<Sentiment, string> = {
   positive: "Positivo",
   neutral: "Neutral",
   negative: "Negativo",
+  unknown: "No reconocido",
 }
 
 const sentimentIcons: Record<Sentiment, React.ReactNode> = {
   positive: <CheckCircle2 className="h-4 w-4" />,
   neutral: <Clock className="h-4 w-4" />,
   negative: <AlertCircle className="h-4 w-4" />,
+  unknown: <AlertCircle className="h-4 w-4" />,
 }
 
 export default function ReportesPage() {
@@ -178,6 +181,16 @@ export default function ReportesPage() {
 
   const getSectionName = (sectionId: string) => {
     return Array.isArray(sections) ? sections.find((s) => s.section_id === sectionId)?.name || sectionId : sectionId
+  }
+
+  // Normalizar el sentimiento para usar con los tipos definidos
+  const normalizeSentiment = (sentiment: string | null | undefined): Sentiment => {
+    if (!sentiment) return "unknown"
+    const normalized = sentiment.toLowerCase()
+    if (normalized === "positive" || normalized === "neutral" || normalized === "negative") {
+      return normalized as Sentiment
+    }
+    return "unknown"
   }
 
   const getSentimentColor = (sentiment: string) => {
@@ -328,14 +341,13 @@ export default function ReportesPage() {
                                 <Users className="h-3.5 w-3.5" />
                                 {individualCount} empleados
                               </span>
-                              {consolidated.sentiment && (
-                                <Badge 
-                                  variant="outline" 
-                                  className={`gap-1.5 ${getSentimentColor(consolidated.sentiment)}`}
-                                >
-                                  {consolidated.sentiment}
-                                </Badge>
-                              )}
+                              <Badge 
+                                variant="outline" 
+                                className={`gap-1.5 ${sentimentColors[normalizeSentiment(consolidated.sentiment)]}`}
+                              >
+                                {sentimentIcons[normalizeSentiment(consolidated.sentiment)]}
+                                {sentimentLabels[normalizeSentiment(consolidated.sentiment)]}
+                              </Badge>
                             </CardDescription>
                           </div>
                           <Button 
@@ -582,9 +594,9 @@ export default function ReportesPage() {
                             <TableCell className="font-medium">{result.employeeName || result.employeeId}</TableCell>
                             <TableCell className="max-w-[200px] truncate">{result.interviewTitle || result.interviewId}</TableCell>
                             <TableCell>
-                              <Badge variant="outline" className={`gap-1.5 ${sentimentColors[result.sentiment]}`}>
-                                {sentimentIcons[result.sentiment]}
-                                {sentimentLabels[result.sentiment]}
+                              <Badge variant="outline" className={`gap-1.5 ${sentimentColors[normalizeSentiment(result.sentiment)]}`}>
+                                {sentimentIcons[normalizeSentiment(result.sentiment)]}
+                                {sentimentLabels[normalizeSentiment(result.sentiment)]}
                               </Badge>
                             </TableCell>
                             <TableCell>
@@ -717,6 +729,14 @@ export default function ReportesPage() {
                 <div>
                   <div className="text-sm text-muted-foreground mb-1">Entrevista</div>
                   <div className="font-medium">{selectedResult.interviewTitle || selectedResult.interviewId}</div>
+                </div>
+
+                <div>
+                  <div className="text-sm text-muted-foreground mb-1">Sentimiento</div>
+                  <Badge variant="outline" className={`gap-1.5 ${sentimentColors[normalizeSentiment(selectedResult.sentiment)]}`}>
+                    {sentimentIcons[normalizeSentiment(selectedResult.sentiment)]}
+                    {sentimentLabels[normalizeSentiment(selectedResult.sentiment)]}
+                  </Badge>
                 </div>
 
                 <div>
