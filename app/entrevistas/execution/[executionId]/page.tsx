@@ -32,6 +32,7 @@ import { employeesApi, type Employee } from "@/lib/services/employees"
 import { useToast } from "@/hooks/use-toast"
 import { LoadingState } from "@/components/common/loading-state"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { InterviewMessagesViewer } from "@/components/interview-messages-viewer"
 
 const statusColors = {
   PENDING: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
@@ -342,12 +343,11 @@ export default function ExecutionDetailPage() {
       </Card>
 
       {/* Tabs con información detallada */}
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs defaultValue="overview" className="space-y-4 mb-12">
         <TabsList>
           <TabsTrigger value="overview">Resumen</TabsTrigger>
-          <TabsTrigger value="conversations">Conversaciones</TabsTrigger>
+          <TabsTrigger value="messages">Mensajes</TabsTrigger>
           <TabsTrigger value="employees">Empleados</TabsTrigger>
-          <TabsTrigger value="analysis">Análisis</TabsTrigger>
         </TabsList>
 
         {/* Tab: Resumen */}
@@ -421,50 +421,9 @@ export default function ExecutionDetailPage() {
           )}
         </TabsContent>
 
-        {/* Tab: Conversaciones */}
-        <TabsContent value="conversations" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Estado de Conversaciones</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {conversations.length > 0 ? (
-                <div className="space-y-4">
-                  {conversations.map((conversation) => (
-                    <div key={conversation.conversation_id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <div>
-                          <p className="font-medium">{conversation.employee_name}</p>
-                          <p className="text-sm text-muted-foreground">ID: {conversation.employee_id}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="text-sm">{conversation.messages_count} mensajes</p>
-                          {conversation.started_at && (
-                            <p className="text-xs text-muted-foreground">
-                              Iniciada: {formatDate(conversation.started_at)}
-                            </p>
-                          )}
-                        </div>
-                        <Badge 
-                          variant="outline"
-                          className={conversation.status === "completed" ? "bg-green-50 text-green-700 border-green-200" : "bg-blue-50 text-blue-700 border-blue-200"}
-                        >
-                          {conversation.status === "completed" ? "Completada" : "En progreso"}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No hay conversaciones disponibles</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        {/* Tab: Mensajes */}
+        <TabsContent value="messages" className="space-y-4">
+          <InterviewMessagesViewer executionId={executionId} />
         </TabsContent>
 
         {/* Tab: Empleados */}
@@ -491,115 +450,6 @@ export default function ExecutionDetailPage() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* Tab: Análisis */}
-        <TabsContent value="analysis" className="space-y-4">
-          {execution.status === "COMPLETED" && (
-            <div className="space-y-4">
-              {execution.general_summary && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      Resumen General
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm">{execution.general_summary}</p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {execution.consolidated_topics && execution.consolidated_topics.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Target className="h-4 w-4" />
-                      Temas Consolidados
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {execution.consolidated_topics.map((topic, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                          <span className="text-sm">{topic}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {execution.critical_issues && execution.critical_issues.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-red-500" />
-                      Problemas Críticos
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {execution.critical_issues.map((issue, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-red-500 rounded-full" />
-                          <span className="text-sm">{issue}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {execution.general_recommendations && execution.general_recommendations.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      Recomendaciones
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {execution.general_recommendations.map((recommendation, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-green-500 rounded-full" />
-                          <span className="text-sm">{recommendation}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {execution.overall_sentiment && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Heart className="h-4 w-4" />
-                      Sentimiento General
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm">{execution.overall_sentiment}</p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          )}
-
-          {execution.status !== "COMPLETED" && (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">
-                  El análisis estará disponible cuando la ejecución se complete
-                </p>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
       </Tabs>
     </div>

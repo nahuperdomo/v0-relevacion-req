@@ -27,7 +27,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                 // If on login page and authenticated, redirect to dashboard
                 if (pathname === "/login") {
-                    router.push("/")
+                    if (currentUser?.role === "ADMIN") {
+                        router.push("/")
+                    } else {
+                        router.push("/mis-entrevistas")
+                    }
+                    return
+                }
+
+                // Check if user is trying to access admin routes
+                const adminRoutes = [
+                    "/",
+                    "/entrevistas",
+                    "/empleados",
+                    "/agentes",
+                    "/reportes",
+                    "/configuracion",
+                ]
+                
+                const isAdminRoute = adminRoutes.some(route => {
+                    if (route === "/") {
+                        return pathname === "/"
+                    }
+                    return pathname.startsWith(route)
+                })
+
+                // If user is not admin and trying to access admin route, redirect to user dashboard
+                if (currentUser?.role !== "ADMIN" && isAdminRoute) {
+                    router.push("/mis-entrevistas")
+                    return
                 }
             } else {
                 setUser(null)

@@ -35,17 +35,6 @@ export default function LoginPage() {
         }
     }
 
-    const fillCredentials = (role: "admin" | "user") => {
-        if (role === "admin") {
-            setEmail("admin@example.com")
-            setPassword("admin123")
-        } else {
-            setEmail("user@example.com")
-            setPassword("user123")
-        }
-        setError(null)
-    }
-
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
             {/* Animated background elements */}
@@ -58,7 +47,7 @@ export default function LoginPage() {
                 {/* Logo/Header */}
                 <div className="text-center mb-8">
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white mb-4 shadow-lg shadow-primary/20 p-2">
-                        <img src="/logo.png" alt="LAiB Logo" className="h-full w-full object-contain" />
+                        <img src="/logolaib.png" alt="LAiB Logo" className="h-full w-full object-contain" />
                     </div>
                     <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
                         LAiB
@@ -137,45 +126,6 @@ export default function LoginPage() {
                                 )}
                             </Button>
                         </form>
-
-                        {/* Demo credentials */}
-                        <div className="pt-4 border-t border-border/50">
-                            <p className="text-xs text-muted-foreground text-center mb-3">
-                                Credenciales de prueba:
-                            </p>
-                            <div className="grid grid-cols-2 gap-2">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => fillCredentials("admin")}
-                                    disabled={loading}
-                                    className="text-xs hover:bg-primary/10 hover:border-primary/30 transition-colors"
-                                >
-                                    <User className="h-3 w-3 mr-1.5" />
-                                    Admin
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => fillCredentials("user")}
-                                    disabled={loading}
-                                    className="text-xs hover:bg-accent/10 hover:border-accent/30 transition-colors"
-                                >
-                                    <User className="h-3 w-3 mr-1.5" />
-                                    Usuario
-                                </Button>
-                            </div>
-                            <div className="mt-3 p-3 rounded-lg bg-muted/50 border border-border/30">
-                                <p className="text-xs text-muted-foreground space-y-1">
-                                    <span className="block font-medium text-foreground/80">Admin:</span>
-                                    <span className="block font-mono">admin@example.com / admin123</span>
-                                    <span className="block font-medium text-foreground/80 mt-2">Usuario:</span>
-                                    <span className="block font-mono">user@example.com / user123</span>
-                                </p>
-                            </div>
-                        </div>
                     </CardContent>
                 </Card>
 

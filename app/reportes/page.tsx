@@ -7,6 +7,7 @@ import { sectionsApi } from "@/lib/services/sections"
 import { interviewsApi, type Interview } from "@/lib/services/interviews"
 import { useToast } from "@/hooks/use-toast"
 import { PageHeader } from "@/components/page-header"
+import { ProtectedRoute } from "@/components/protected-route"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -211,7 +212,7 @@ export default function ReportesPage() {
   console.log('[REPORTES] Total results:', Array.isArray(results) ? results.length : 0)
 
   return (
-    <>
+    <ProtectedRoute requireAdmin={true}>
       <PageHeader
         title="Reportes y Resultados"
         description="Visualiza y analiza los resultados consolidados de las entrevistas"
@@ -791,6 +792,6 @@ export default function ReportesPage() {
           </Dialog>
         )}
       </main>
-    </>
+    </ProtectedRoute>
   )
 }

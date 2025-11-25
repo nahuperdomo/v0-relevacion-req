@@ -4,6 +4,15 @@ export type ChatMessage = {
     role: 'user' | 'assistant';
     content: string;
     timestamp: Date;
+    audio?: {
+        url: string;
+        duration?: number;
+    };
+    attachment?: {
+        filename: string;
+        mimetype: string;
+        size: number;
+    };
 };
 
 export type SessionStartedData = {

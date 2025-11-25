@@ -35,7 +35,7 @@ export function ErrorAlert({ isOpen, onClose, title, message, type = "error" }: 
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
-      <AlertDialogContent className="max-w-md">
+      <AlertDialogContent className="max-w-lg">
         <AlertDialogHeader>
           <div className="flex flex-col items-center gap-4 pb-2">
             {icons[type]}

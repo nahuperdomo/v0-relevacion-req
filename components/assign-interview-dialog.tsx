@@ -115,7 +115,7 @@ export function AssignInterviewDialog() {
                     Asignar Entrevista
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>Asignar Nueva Entrevista</DialogTitle>
                     <DialogDescription>

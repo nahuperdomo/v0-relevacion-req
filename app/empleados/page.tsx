@@ -6,6 +6,7 @@ import { sectionsApi, type Section, type CreateSectionData } from "@/lib/service
 import { agentsApi, type Agent } from "@/lib/services/agents"
 import { useToast } from "@/hooks/use-toast"
 import { PageHeader } from "@/components/page-header"
+import { ProtectedRoute } from "@/components/protected-route"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -327,7 +328,7 @@ export default function EmpleadosPage() {
   }
 
   return (
-    <>
+    <ProtectedRoute requireAdmin={true}>
       <PageHeader
         title="Gestión de Empleados y Secciones"
         description="Administra empleados y las secciones organizacionales"
@@ -818,6 +819,6 @@ export default function EmpleadosPage() {
           </Dialog>
         )}
       </main>
-    </>
+    </ProtectedRoute>
   )
 }

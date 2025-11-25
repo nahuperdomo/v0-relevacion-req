@@ -1,5 +1,6 @@
 "use client"
 import { PageHeader } from "@/components/page-header"
+import { ProtectedRoute } from "@/components/protected-route"
 import { StatsCard } from "@/components/stats-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -112,7 +113,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <>
+    <ProtectedRoute requireAdmin={true}>
       <PageHeader
         title="Dashboard"
       />
@@ -224,31 +225,6 @@ export default function DashboardPage() {
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <p className="text-sm font-medium text-card-foreground">
-                              {interview.conversations_completed || 0}/{interview.conversations_total || 0}
-                            </p>
-                            <p className="text-xs text-muted-foreground">respuestas</p>
-                          </div>
-                          <Badge
-                            variant={
-                              interview.status === "COMPLETED"
-                                ? "default"
-                                : interview.status === "ACTIVE"
-                                  ? "secondary"
-                                  : "outline"
-                            }
-                          >
-                            {interview.status === "COMPLETED"
-                              ? "Completada"
-                              : interview.status === "ACTIVE"
-                                ? "Activa"
-                                : interview.status === "PAUSED"
-                                  ? "Pausada"
-                                  : "Borrador"}
-                          </Badge>
-                        </div>
                       </button>
                     ))
                 )}
@@ -267,13 +243,6 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-accent" />
                     <span className="text-sm font-medium">API Backend</span>
-                  </div>
-                  <span className="text-xs text-accent">Operativo</span>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-accent/10">
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-accent" />
-                    <span className="text-sm font-medium">WhatsApp API</span>
                   </div>
                   <span className="text-xs text-accent">Operativo</span>
                 </div>
@@ -564,6 +533,6 @@ export default function DashboardPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </>
+    </ProtectedRoute>
   )
 }

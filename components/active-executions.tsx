@@ -135,9 +135,6 @@ export function ActiveExecutions() {
                     </div>
                   )}
                 </div>
-                <Badge variant="outline" className={statusColor}>
-                  {statusLabel}
-                </Badge>
               </div>
 
               {/* Progress Bar */}

@@ -256,7 +256,7 @@ export function SidebarNav() {
       <div className="flex h-16 items-center border-b border-sidebar-border px-6">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white p-1">
-            <img src="/logo.png" alt="LAiB Logo" className="h-full w-full object-contain" />
+            <img src="/logolaib.png" alt="LAiB Logo" className="h-full w-full object-contain" />
           </div>
           <div>
             <h1 className="text-sm font-semibold text-sidebar-foreground">LAiB</h1>

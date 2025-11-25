@@ -6,6 +6,7 @@ import { agentsApi, type Agent } from "@/lib/services/agents"
 import { configService } from "@/lib/services/config"
 import { useToast } from "@/hooks/use-toast"
 import { PageHeader } from "@/components/page-header"
+import { ProtectedRoute } from "@/components/protected-route"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -251,7 +252,7 @@ export default function ConfiguracionPage() {
     : []
 
   return (
-    <>
+    <ProtectedRoute requireAdmin={true}>
       <PageHeader
         title="Configuración"
         description="Gestiona las secciones y configuraciones del sistema"
@@ -597,6 +598,6 @@ export default function ConfiguracionPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </ProtectedRoute>
   )
 }

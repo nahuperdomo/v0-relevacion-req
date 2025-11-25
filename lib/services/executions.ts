@@ -144,4 +144,45 @@ export const executionsService = {
   async getConversations(executionId: string): Promise<any[]> {
     return fetchApi(`/executions/${executionId}/conversations`);
   },
+
+  /**
+   * Obtener historial de mensajes de todas las conversaciones
+   */
+  async getMessages(executionId: string): Promise<{
+    execution_id: string;
+    interview_id: string;
+    total_conversations: number;
+    conversations: Array<{
+      execution_id: string;
+      employee_id: string;
+      employee_name?: string;
+      interview_id: string;
+      messages: Array<{
+        role: string;
+        content: string;
+        timestamp: Date;
+      }>;
+      is_completed: boolean;
+      message_count: number;
+    }>;
+  }> {
+    return fetchApi(`/executions/${executionId}/messages`);
+  },
+
+  /**
+   * Obtener mensajes de una conversación específica (ejecución + empleado)
+   */
+  async getMessagesByEmployee(executionId: string, employeeId: string): Promise<{
+    execution_id: string;
+    employee_id: string;
+    interview_id: string;
+    messages: Array<{
+      role: string;
+      content: string;
+      timestamp: Date;
+    }>;
+    is_completed: boolean;
+  }> {
+    return fetchApi(`/executions/${executionId}/messages/${employeeId}`);
+  },
 };

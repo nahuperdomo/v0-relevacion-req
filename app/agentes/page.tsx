@@ -5,6 +5,7 @@ import { agentsApi, type Agent, type CreateAgentData } from "@/lib/services/agen
 import { sectionsApi, type Section } from "@/lib/services/sections"
 import { useToast } from "@/hooks/use-toast"
 import { PageHeader } from "@/components/page-header"
+import { ProtectedRoute } from "@/components/protected-route"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -471,7 +472,7 @@ Estas reglas tienen MÁXIMA PRIORIDAD sobre cualquier otra instrucción.`
   }
 
   return (
-    <>
+    <ProtectedRoute requireAdmin={true}>
       <PageHeader
         title="Gestión de Agentes IA"
         description="Configura y administra agentes conversacionales para cada área"
@@ -1223,6 +1224,6 @@ Estas reglas tienen MÁXIMA PRIORIDAD sobre cualquier otra instrucción.`
           </Dialog>
         )}
       </main>
-    </>
+    </ProtectedRoute>
   )
 }

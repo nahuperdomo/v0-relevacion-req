@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { PageHeader } from "@/components/page-header"
+import { ProtectedRoute } from "@/components/protected-route"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -43,6 +45,7 @@ const statusLabels: Record<InterviewStatus, string> = {
 }
 
 export default function EntrevistasPage() {
+  const router = useRouter()
   const [interviews, setInterviews] = useState<Interview[]>([])
   const [sections, setSections] = useState<Section[]>([])
   const [agentsList, setAgentsList] = useState<Agent[]>([])
@@ -482,6 +485,36 @@ export default function EntrevistasPage() {
     setCurrentPage(1)
   }
 
+  const handleViewInterviewDetails = async (interview: Interview) => {
+    try {
+      // Obtener todas las ejecuciones de esta entrevista
+      const executions = await executionsService.getAll({ 
+        interview_id: interview.interview_id,
+        limit: 100 
+      })
+      
+      if (executions.executions && executions.executions.length > 0) {
+        // Navegar a la ejecución más reciente
+        const latestExecution = executions.executions[0]
+        router.push(`/entrevistas/execution/${latestExecution.execution_id}`)
+      } else {
+        // Si no hay ejecuciones, mostrar un toast
+        toast({
+          title: "Sin ejecuciones",
+          description: "Esta entrevista aún no tiene ejecuciones. Ejecuta la entrevista primero.",
+          variant: "default",
+        })
+      }
+    } catch (error) {
+      console.error("Error navigating to interview details:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo cargar los detalles de la entrevista",
+        variant: "destructive",
+      })
+    }
+  }
+
   const statusMapping: Record<Interview["status"], InterviewStatus> = {
     DRAFT: "DRAFT",
     ACTIVE: "ACTIVE",
@@ -489,7 +522,7 @@ export default function EntrevistasPage() {
   }
 
   return (
-    <>
+    <ProtectedRoute requireAdmin={true}>
       <PageHeader
         title="Gestión de Entrevistas"
         description="Crea y administra entrevistas encubiertas para relevamiento de requerimientos"
@@ -587,7 +620,11 @@ export default function EntrevistasPage() {
                 </TableHeader>
                 <TableBody>
                   {paginatedInterviews.map((interview) => (
-                    <TableRow key={interview.interview_id} className="border-border/50 hover:bg-muted/5">
+                    <TableRow 
+                      key={interview.interview_id} 
+                      className="border-border/50 hover:bg-muted/10 cursor-pointer transition-colors"
+                      onClick={() => handleViewInterviewDetails(interview)}
+                    >
                       <TableCell className="font-medium">{interview.title}</TableCell>
                       <TableCell>{interview.section_name || interview.section_id}</TableCell>
                       <TableCell className="text-muted-foreground">{interview.agent_name || interview.agent_id}</TableCell>
@@ -606,7 +643,7 @@ export default function EntrevistasPage() {
                       </TableCell>
                       <TableCell>{interview.conversations_total || 0}</TableCell>
                       <TableCell>
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                           {interview.status === "DRAFT" && (
                             <Button
                               variant="ghost"
@@ -1402,7 +1439,7 @@ export default function EntrevistasPage() {
 
         {/* Diálogo de confirmación de eliminación */}
         <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>¿Eliminar entrevista?</DialogTitle>
               <DialogDescription>
@@ -1435,6 +1472,6 @@ export default function EntrevistasPage() {
           </DialogContent>
         </Dialog>
       </main>
-    </>
+    </ProtectedRoute>
   )
 }

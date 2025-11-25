@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { AudioRecorder } from "@/components/audio-recorder"
 import {
     X,
     Send,
@@ -21,7 +22,8 @@ import {
     File,
     Image as ImageIcon,
     FileType,
-    X as XIcon
+    X as XIcon,
+    Mic
 } from "lucide-react"
 import { webSocketService, ChatMessage, SessionStartedData } from "@/lib/services/websocket.service"
 import { useAuth } from "@/components/auth-provider"
@@ -54,6 +56,7 @@ export function InterviewChat({ interview, onClose }: InterviewChatProps) {
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [isUploadingFile, setIsUploadingFile] = useState(false)
     const [sessionId, setSessionId] = useState<string | null>(null)
+    const [isRecordingAudio, setIsRecordingAudio] = useState(false)
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -119,6 +122,27 @@ export function InterviewChat({ interview, onClose }: InterviewChatProps) {
             setIsTyping(data.isTyping)
         })
 
+        const unsubscribeTranscribed = webSocketService.on('audio-transcribed', (data: { transcription: string; timestamp: Date }) => {
+            console.log('Audio transcribed:', data.transcription)
+            // Actualizar el último mensaje del usuario con la transcripción
+            setMessages(prev => {
+                const newMessages = [...prev]
+                // Buscar el último mensaje del usuario que tenga audio
+                for (let i = newMessages.length - 1; i >= 0; i--) {
+                    if (newMessages[i].role === 'user' && newMessages[i].audio) {
+                        // Reemplazar el audio por la transcripción
+                        newMessages[i] = {
+                            ...newMessages[i],
+                            content: data.transcription,
+                            audio: undefined, // Eliminar el audio
+                        }
+                        break
+                    }
+                }
+                return newMessages
+            })
+        })
+
         const unsubscribeCompleted = webSocketService.on('interview-completed', async () => {
             setIsCompleted(true)
             
@@ -154,6 +178,7 @@ export function InterviewChat({ interview, onClose }: InterviewChatProps) {
             unsubscribeMessage()
             unsubscribeUserMessage()
             unsubscribeTyping()
+            unsubscribeTranscribed()
             unsubscribeCompleted()
             unsubscribeError()
             webSocketService.disconnect()
@@ -176,9 +201,9 @@ export function InterviewChat({ interview, onClose }: InterviewChatProps) {
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (file) {
-            // Validar tamaño (10MB)
-            if (file.size > 10 * 1024 * 1024) {
-                setError("El archivo es demasiado grande. Máximo 10MB")
+            // Validar tamaño (20MB)
+            if (file.size > 20 * 1024 * 1024) {
+                setError("El archivo es demasiado grande. Máximo 20MB")
                 return
             }
             setSelectedFile(file)
@@ -268,9 +293,13 @@ export function InterviewChat({ interview, onClose }: InterviewChatProps) {
                 const newMessages = [...prev]
                 const lastMessage = newMessages[newMessages.length - 1]
                 if (lastMessage.role === 'user') {
-                    lastMessage.content = userInputText 
-                        ? `${userInputText}\n\n[📎 Archivo adjunto: ${fileName}]`
-                        : `[📎 Archivo adjunto: ${fileName}]`
+                    // Guardar metadata del archivo para visualización
+                    lastMessage.content = userInputText || ''
+                    lastMessage.attachment = {
+                        filename: fileName,
+                        mimetype: fileData.mimetype,
+                        size: fileData.size
+                    }
                 }
                 return newMessages
             })
@@ -294,7 +323,7 @@ export function InterviewChat({ interview, onClose }: InterviewChatProps) {
             })
             
             webSocketService.sendMessage(
-                userInputText ? `${userInputText}\n\n[Archivo adjunto: ${fileName}]` : `[Archivo adjunto: ${fileName}]`,
+                userInputText || '',
                 [attachment]
             )
 
@@ -311,6 +340,106 @@ export function InterviewChat({ interview, onClose }: InterviewChatProps) {
         setSelectedFile(null)
         if (fileInputRef.current) {
             fileInputRef.current.value = ''
+        }
+    }
+
+    const handleAudioRecorded = async (audioBlob: Blob) => {
+        if (!sessionId) {
+            setError("No hay sesión activa")
+            return
+        }
+
+        setIsUploadingFile(true)
+        setIsRecordingAudio(false)
+
+        try {
+            // Crear URL del blob para reproducción
+            const audioUrl = URL.createObjectURL(audioBlob)
+            
+            // Crear un blob con el tipo correcto si no lo tiene
+            const typedBlob = new Blob([audioBlob], { type: 'audio/webm' })
+            
+            const formData = new FormData()
+            formData.append('file', typedBlob, `audio_${Date.now()}.webm`)
+            formData.append('sessionId', sessionId)
+            if (input.trim()) {
+                formData.append('message', input)
+            }
+
+            console.log('Uploading audio:', {
+                size: typedBlob.size,
+                type: typedBlob.type,
+                sessionId: sessionId
+            })
+
+            // Agregar mensaje del usuario con audio player
+            const userMessageContent = input.trim() || ''
+
+            setMessages(prev => [...prev, {
+                role: 'user',
+                content: userMessageContent,
+                timestamp: new Date(),
+                audio: {
+                    url: audioUrl,
+                    duration: 0 // Se calculará con el audio element
+                }
+            }])
+
+            const userInputText = input.trim()
+            setInput("")
+
+            const response = await fetch('http://localhost:3000/api/v1/interview-files/upload', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Authorization': `Bearer ${getAuthToken()}`
+                }
+            })
+
+            console.log('Upload response status:', response.status)
+
+            if (!response.ok) {
+                const errorText = await response.text()
+                console.error('Upload error response:', errorText)
+                throw new Error(`Error al subir el audio: ${response.status}`)
+            }
+
+            const result = await response.json()
+            console.log('Upload result:', result)
+            
+            const fileData = result.data || result
+
+            if (!fileData) {
+                throw new Error('No se recibieron datos del servidor')
+            }
+
+            // No necesitamos actualizar el mensaje ya que ya tiene el audio player
+
+            // Enviar por WebSocket
+            setIsTyping(true)
+
+            const attachment = {
+                url: fileData.fileUrl,
+                filename: fileData.filename,
+                mimetype: fileData.mimetype,
+                size: fileData.size
+            }
+
+            console.log('Sending audio via WebSocket:', attachment)
+
+            webSocketService.sendMessage(
+                userInputText || '',
+                [attachment]
+            )
+
+        } catch (err) {
+            console.error('Error uploading audio:', err)
+            setError(err instanceof Error ? err.message : 'Error al subir la nota de voz')
+
+            // Remover el mensaje de carga del usuario
+            setMessages(prev => prev.slice(0, -1))
+        } finally {
+            setIsUploadingFile(false)
         }
     }
 
@@ -414,7 +543,47 @@ export function InterviewChat({ interview, onClose }: InterviewChatProps) {
                                 : "bg-muted"
                                 }`}
                         >
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                            {/* Si el mensaje tiene archivo adjunto, mostrar componente visual */}
+                            {message.attachment && (
+                                <div className="mb-2 p-2 bg-background/10 rounded-lg border border-border/20">
+                                    <div className="flex items-center gap-2">
+                                        {message.attachment.mimetype.startsWith('image/') ? (
+                                            <ImageIcon className="h-4 w-4 flex-shrink-0" />
+                                        ) : message.attachment.mimetype.includes('pdf') ? (
+                                            <FileType className="h-4 w-4 flex-shrink-0" />
+                                        ) : (
+                                            <File className="h-4 w-4 flex-shrink-0" />
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-medium truncate">{message.attachment.filename}</p>
+                                            <p className="text-xs opacity-70">{(message.attachment.size / 1024).toFixed(1)} KB</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Si el mensaje tiene audio, mostrar player */}
+                            {message.audio ? (
+                                <div className="min-w-[200px]">
+                                    <audio 
+                                        controls 
+                                        src={message.audio.url}
+                                        className="w-full"
+                                        style={{
+                                            height: '32px',
+                                            maxWidth: '100%'
+                                        }}
+                                    />
+                                </div>
+                            ) : message.content ? (
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                            ) : null}
+                            
+                            {/* Mostrar texto adicional si hay */}
+                            {message.audio && message.content && (
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap mt-2">{message.content}</p>
+                            )}
+                            
                             <span className="text-xs opacity-70 mt-1 block">
                                 {message.timestamp.toLocaleTimeString("es-ES", {
                                     hour: "2-digit",
@@ -488,10 +657,19 @@ export function InterviewChat({ interview, onClose }: InterviewChatProps) {
             {/* Input */}
             {!isCompleted && (
                 <div className="border-t border-border bg-card p-4">
-                    <div className="max-w-4xl mx-auto">
+                    <div className="max-w-4xl mx-auto space-y-3">
+                        {/* Audio Recorder */}
+                        {isRecordingAudio && (
+                            <AudioRecorder
+                                onRecordingComplete={handleAudioRecorded}
+                                onCancel={() => setIsRecordingAudio(false)}
+                                disabled={!isConnected || isTyping || isUploadingFile}
+                            />
+                        )}
+
                         {/* File Preview */}
-                        {selectedFile && (
-                            <div className="mb-3 p-3 bg-muted rounded-lg flex items-center justify-between">
+                        {selectedFile && !isRecordingAudio && (
+                            <div className="p-3 bg-muted rounded-lg flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     {getFileIcon(selectedFile)}
                                     <div className="flex-1 min-w-0">
@@ -512,48 +690,61 @@ export function InterviewChat({ interview, onClose }: InterviewChatProps) {
                             </div>
                         )}
 
-                        <div className="flex gap-2">
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                onChange={handleFileSelect}
-                                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
-                                className="hidden"
-                            />
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={!isConnected || isTyping || isUploadingFile || !!selectedFile}
-                                title="Adjuntar archivo"
-                            >
-                                <Paperclip className="h-4 w-4" />
-                            </Button>
-                            <Input
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyPress={handleKeyPress}
-                                placeholder={selectedFile ? "Mensaje opcional..." : "Escribe tu respuesta o adjunta un archivo..."}
-                                disabled={!isConnected || isTyping || isUploadingFile}
-                                className="flex-1"
-                            />
-                            <Button
-                                onClick={handleSend}
-                                disabled={(!input.trim() && !selectedFile) || !isConnected || isTyping || isUploadingFile}
-                                className="bg-primary hover:bg-primary/90"
-                            >
-                                {isTyping || isUploadingFile ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Send className="h-4 w-4" />
-                                )}
-                            </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground text-center mt-2">
-                            {selectedFile 
-                                ? "Haz clic en enviar para subir el archivo" 
-                                : "Presiona Enter para enviar o adjunta archivos (imágenes, PDFs, documentos)"}
-                        </p>
+                        {!isRecordingAudio && (
+                            <>
+                                <div className="flex gap-2">
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        onChange={handleFileSelect}
+                                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+                                        className="hidden"
+                                    />
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={!isConnected || isTyping || isUploadingFile || !!selectedFile}
+                                        title="Adjuntar archivo"
+                                    >
+                                        <Paperclip className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => setIsRecordingAudio(true)}
+                                        disabled={!isConnected || isTyping || isUploadingFile || !!selectedFile}
+                                        title="Grabar audio"
+                                    >
+                                        <Mic className="h-4 w-4" />
+                                    </Button>
+                                    <Input
+                                        value={input}
+                                        onChange={(e) => setInput(e.target.value)}
+                                        onKeyPress={handleKeyPress}
+                                        placeholder={selectedFile ? "Mensaje opcional..." : "Escribe tu respuesta, graba audio o adjunta archivos..."}
+                                        disabled={!isConnected || isTyping || isUploadingFile}
+                                        className="flex-1"
+                                    />
+                                    <Button
+                                        onClick={handleSend}
+                                        disabled={(!input.trim() && !selectedFile) || !isConnected || isTyping || isUploadingFile}
+                                        className="bg-primary hover:bg-primary/90"
+                                    >
+                                        {isTyping || isUploadingFile ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <Send className="h-4 w-4" />
+                                        )}
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground text-center">
+                                    {selectedFile 
+                                        ? "Haz clic en enviar para subir el archivo" 
+                                        : "Presiona Enter para enviar, 🎤 para grabar audio o 📎 para adjuntar archivos"}
+                                </p>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
